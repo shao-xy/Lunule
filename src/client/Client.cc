@@ -12670,7 +12670,7 @@ int Client::ll_releasedir(dir_result_t *dirp)
   #ifdef TRACE_COLLECTION
   end_time_ll_releasedir = ceph_clock_now();
   timecost_ll_releasedir = end_time_ll_releasedir - start_time_ll_releasedir;
-  ldout(cct, 0) << " TRACE_COLLECTION " << " closedir " << fp << << "time cost" << timecost_ll_releasedir << dendl;
+  ldout(cct, 0) << " TRACE_COLLECTION " << " closedir " << fp << "time cost" << timecost_ll_releasedir << dendl;
   #endif
 
   return 0;
@@ -13385,7 +13385,7 @@ int Client::ll_release(Fh *fh)
 
   if (ll_unclosed_fh_set.count(fh))
     ll_unclosed_fh_set.erase(fh);
-  retval = _release_fh(fh)
+  retval = _release_fh(fh);
   
   #ifdef TRACE_COLLECTION
   end_time_ll_release = ceph_clock_now();
