@@ -7920,8 +7920,14 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
   }
 
   while (1) {
-    if (dirp->at_end())
+    if (dirp->at_end()){
+      #ifdef TRACE_COLLECTION
+      end_time_ll_readdir = ceph_clock_now();
+      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
+      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << " time cost: " << timecost_ll_readdir << dendl;
+      #endif
       return 0;
+    }
 
     bool check_caps = true;
     if (!dirp->is_cached()) {
@@ -8029,9 +8035,19 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
     }
 
     dirp->set_end();
+    #ifdef TRACE_COLLECTION
+    end_time_ll_readdir = ceph_clock_now();
+    timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
+    ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << " time cost: " << timecost_ll_readdir << dendl;
+    #endif
     return 0;
   }
   ceph_abort();
+  #ifdef TRACE_COLLECTION
+  end_time_ll_readdir = ceph_clock_now();
+  timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
+  ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << " time cost: " << timecost_ll_readdir << dendl;
+  #endif
   return 0;
 }
 
