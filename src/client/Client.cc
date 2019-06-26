@@ -7768,14 +7768,8 @@ int Client::_readdir_cache_cb(dir_result_t *dirp, add_dirent_cb_t cb, void *p,
 }
 
 int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
-			 unsigned want, unsigned flags, bool getref)
+       unsigned want, unsigned flags, bool getref)
 {
-  #ifdef TRACE_COLLECTION
-  utime_t start_time_ll_readdir;
-  utime_t end_time_ll_readdir;
-  utime_t timecost_ll_readdir;
-  start_time_ll_readdir = ceph_clock_now();
-  #endif
   int caps = statx_to_mask(flags, want);
 
   Mutex::Locker lock(client_lock);
@@ -7786,13 +7780,13 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
   dir_result_t *dirp = static_cast<dir_result_t*>(d);
 
   ldout(cct, 10) << "readdir_r_cb " << *dirp->inode << " offset " << hex << dirp->offset
-		 << dec << " at_end=" << dirp->at_end()
-		 << " hash_order=" << dirp->hash_order() << dendl;
+     << dec << " at_end=" << dirp->at_end()
+     << " hash_order=" << dirp->hash_order() << dendl;
   #ifdef TRACE_COLLECTION
   if(dirp->inode != NULL){
     filepath fp;
     dirp->inode->make_long_path(fp);
-    //ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << dendl;
+    ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << dendl;
   }
   #endif
 
@@ -7813,14 +7807,8 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
 
     int r;
     r = _getattr(diri, caps, dirp->perms);
-    if (r < 0){
-      #ifdef TRACE_COLLECTION
-      end_time_ll_readdir = ceph_clock_now();
-      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
-      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << "time cost" << timecost_ll_readdir << dendl;
-      #endif
+    if (r < 0)
       return r;
-    }
 
     fill_statx(diri, caps, &stx);
     fill_dirent(&de, ".", S_IFDIR, stx.stx_ino, next_off);
@@ -7834,24 +7822,12 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
     client_lock.Unlock();
     r = cb(p, &de, &stx, next_off, inode);
     client_lock.Lock();
-    if (r < 0){
-      #ifdef TRACE_COLLECTION
-      end_time_ll_readdir = ceph_clock_now();
-      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
-      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << "time cost" << timecost_ll_readdir << dendl;
-      #endif
+    if (r < 0)
       return r;
-    }
 
     dirp->offset = next_off;
-    if (r > 0){
-      #ifdef TRACE_COLLECTION
-      end_time_ll_readdir = ceph_clock_now();
-      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
-      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << "time cost" << timecost_ll_readdir << dendl;
-      #endif
+    if (r > 0)
       return r;
-    }
   }
   if (dirp->offset == 1) {
     ldout(cct, 15) << " including .." << dendl;
@@ -7864,14 +7840,8 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
 
     int r;
     r = _getattr(in, caps, dirp->perms);
-    if (r < 0){
-      #ifdef TRACE_COLLECTION
-      end_time_ll_readdir = ceph_clock_now();
-      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
-      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << "time cost" << timecost_ll_readdir << dendl;
-      #endif
+    if (r < 0)
       return r;
-    }
 
     fill_statx(in, caps, &stx);
     fill_dirent(&de, "..", S_IFDIR, stx.stx_ino, next_off);
@@ -7885,32 +7855,20 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
     client_lock.Unlock();
     r = cb(p, &de, &stx, next_off, inode);
     client_lock.Lock();
-    if (r < 0){
-      #ifdef TRACE_COLLECTION
-      end_time_ll_readdir = ceph_clock_now();
-      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
-      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << "time cost" << timecost_ll_readdir << dendl;
-      #endif
+    if (r < 0)
       return r;
-    }
 
     dirp->offset = next_off;
-    if (r > 0){
-      #ifdef TRACE_COLLECTION
-      end_time_ll_readdir = ceph_clock_now();
-      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
-      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << "time cost" << timecost_ll_readdir << dendl;
-      #endif
+    if (r > 0)
       return r;
-    }
   }
 
   // can we read from our cache?
   ldout(cct, 10) << "offset " << hex << dirp->offset << dec
-	   << " snapid " << dirp->inode->snapid << " (complete && ordered) "
-	   << dirp->inode->is_complete_and_ordered()
-	   << " issued " << ccap_string(dirp->inode->caps_issued())
-	   << dendl;
+     << " snapid " << dirp->inode->snapid << " (complete && ordered) "
+     << dirp->inode->is_complete_and_ordered()
+     << " issued " << ccap_string(dirp->inode->caps_issued())
+     << dendl;
   if (dirp->inode->snapid != CEPH_SNAPDIR &&
       dirp->inode->is_complete_and_ordered() &&
       dirp->inode->caps_issued_mask(CEPH_CAP_FILE_SHARED, true)) {
@@ -7926,13 +7884,8 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
     bool check_caps = true;
     if (!dirp->is_cached()) {
       int r = _readdir_get_frag(dirp);
-      if (r){
-      #ifdef TRACE_COLLECTION
-      end_time_ll_readdir = ceph_clock_now();
-      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
-      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << "time cost" << timecost_ll_readdir << dendl;
-      #endif
-	return r;}
+      if (r)
+  return r;
       // _readdir_get_frag () may updates dirp->offset if the replied dirfrag is
       // different than the requested one. (our dirfragtree was outdated)
       check_caps = false;
@@ -7940,27 +7893,21 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
     frag_t fg = dirp->buffer_frag;
 
     ldout(cct, 10) << "frag " << fg << " buffer size " << dirp->buffer.size()
-		   << " offset " << hex << dirp->offset << dendl;
+       << " offset " << hex << dirp->offset << dendl;
 
     for (auto it = std::lower_bound(dirp->buffer.begin(), dirp->buffer.end(),
-				    dirp->offset, dir_result_t::dentry_off_lt());
-	 it != dirp->buffer.end();
-	 ++it) {
+            dirp->offset, dir_result_t::dentry_off_lt());
+   it != dirp->buffer.end();
+   ++it) {
       dir_result_t::dentry &entry = *it;
 
       uint64_t next_off = entry.offset + 1;
 
       int r;
       if (check_caps) {
-	r = _getattr(entry.inode, caps, dirp->perms);
-	if (r < 0){
-    #ifdef TRACE_COLLECTION
-    end_time_ll_readdir = ceph_clock_now();
-    timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
-    ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << "time cost" << timecost_ll_readdir << dendl;
-    #endif
+  r = _getattr(entry.inode, caps, dirp->perms);
+  if (r < 0)
     return r;
-  }
       }
 
       fill_statx(entry.inode, caps, &stx);
@@ -7968,8 +7915,8 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
 
       Inode *inode = NULL;
       if (getref) {
-	inode = entry.inode.get();
-	_ll_get(inode);
+  inode = entry.inode.get();
+  _ll_get(inode);
       }
 
       client_lock.Unlock();
@@ -7977,26 +7924,13 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
       client_lock.Lock();
 
       ldout(cct, 15) << " de " << de.d_name << " off " << hex << next_off - 1 << dec
-		     << " = " << r << dendl;
-      if (r < 0){
-      #ifdef TRACE_COLLECTION
-      end_time_ll_readdir = ceph_clock_now();
-      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
-      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << "time cost" << timecost_ll_readdir << dendl;
-      #endif
-      return r;
-      }
-
+         << " = " << r << dendl;
+      if (r < 0)
+  return r;
 
       dirp->offset = next_off;
-      if (r > 0){
-        #ifdef TRACE_COLLECTION
-        end_time_ll_readdir = ceph_clock_now();
-        timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
-        ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << "time cost" << timecost_ll_readdir << dendl;
-        #endif
-        return r;
-      }
+      if (r > 0)
+  return r;
     }
 
     if (dirp->next_offset > 2) {
@@ -8012,17 +7946,17 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
     }
 
     if (diri->shared_gen == dirp->start_shared_gen &&
-	diri->dir_release_count == dirp->release_count) {
+  diri->dir_release_count == dirp->release_count) {
       if (diri->dir_ordered_count == dirp->ordered_count) {
-	ldout(cct, 10) << " marking (I_COMPLETE|I_DIR_ORDERED) on " << *diri << dendl;
-	if (diri->dir) {
-	  assert(diri->dir->readdir_cache.size() >= dirp->cache_index);
-	  diri->dir->readdir_cache.resize(dirp->cache_index);
-	}
-	diri->flags |= I_COMPLETE | I_DIR_ORDERED;
+  ldout(cct, 10) << " marking (I_COMPLETE|I_DIR_ORDERED) on " << *diri << dendl;
+  if (diri->dir) {
+    assert(diri->dir->readdir_cache.size() >= dirp->cache_index);
+    diri->dir->readdir_cache.resize(dirp->cache_index);
+  }
+  diri->flags |= I_COMPLETE | I_DIR_ORDERED;
       } else {
-	ldout(cct, 10) << " marking I_COMPLETE on " << *diri << dendl;
-	diri->flags |= I_COMPLETE;
+  ldout(cct, 10) << " marking I_COMPLETE on " << *diri << dendl;
+  diri->flags |= I_COMPLETE;
       }
     }
 
