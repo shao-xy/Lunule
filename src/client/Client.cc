@@ -7770,6 +7770,12 @@ int Client::_readdir_cache_cb(dir_result_t *dirp, add_dirent_cb_t cb, void *p,
 int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
        unsigned want, unsigned flags, bool getref)
 {
+  #ifdef TRACE_COLLECTION
+  utime_t start_time_ll_readdir;
+  utime_t end_time_ll_readdir;
+  utime_t timecost_ll_readdir;
+  start_time_ll_readdir = ceph_clock_now();
+  #endif
   int caps = statx_to_mask(flags, want);
 
   Mutex::Locker lock(client_lock);
@@ -7783,8 +7789,8 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
      << dec << " at_end=" << dirp->at_end()
      << " hash_order=" << dirp->hash_order() << dendl;
   #ifdef TRACE_COLLECTION
-  if(dirp->inode != NULL){
-    filepath fp;
+  filepath fp;
+  if(dirp->inode != NULL){  
     dirp->inode->make_long_path(fp);
     ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << dendl;
   }
@@ -7807,8 +7813,14 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
 
     int r;
     r = _getattr(diri, caps, dirp->perms);
-    if (r < 0)
+    if (r < 0){
+      #ifdef TRACE_COLLECTION
+      end_time_ll_readdir = ceph_clock_now();
+      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
+      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << " time cost: " << timecost_ll_readdir << dendl;
+      #endif
       return r;
+    }
 
     fill_statx(diri, caps, &stx);
     fill_dirent(&de, ".", S_IFDIR, stx.stx_ino, next_off);
@@ -7822,12 +7834,24 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
     client_lock.Unlock();
     r = cb(p, &de, &stx, next_off, inode);
     client_lock.Lock();
-    if (r < 0)
+    if (r < 0){
+      #ifdef TRACE_COLLECTION
+      end_time_ll_readdir = ceph_clock_now();
+      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
+      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << " time cost: " << timecost_ll_readdir << dendl;
+      #endif
       return r;
+    }
 
     dirp->offset = next_off;
-    if (r > 0)
+    if (r > 0){
+      #ifdef TRACE_COLLECTION
+      end_time_ll_readdir = ceph_clock_now();
+      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
+      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << " time cost: " << timecost_ll_readdir << dendl;
+      #endif
       return r;
+    }
   }
   if (dirp->offset == 1) {
     ldout(cct, 15) << " including .." << dendl;
@@ -7840,8 +7864,14 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
 
     int r;
     r = _getattr(in, caps, dirp->perms);
-    if (r < 0)
+    if (r < 0){
+      #ifdef TRACE_COLLECTION
+      end_time_ll_readdir = ceph_clock_now();
+      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
+      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << " time cost: " << timecost_ll_readdir << dendl;
+      #endif
       return r;
+    }
 
     fill_statx(in, caps, &stx);
     fill_dirent(&de, "..", S_IFDIR, stx.stx_ino, next_off);
@@ -7855,12 +7885,24 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
     client_lock.Unlock();
     r = cb(p, &de, &stx, next_off, inode);
     client_lock.Lock();
-    if (r < 0)
+    if (r < 0){
+      #ifdef TRACE_COLLECTION
+      end_time_ll_readdir = ceph_clock_now();
+      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
+      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << " time cost: " << timecost_ll_readdir << dendl;
+      #endif
       return r;
+    }
 
     dirp->offset = next_off;
-    if (r > 0)
+    if (r > 0){
+      #ifdef TRACE_COLLECTION
+      end_time_ll_readdir = ceph_clock_now();
+      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
+      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << " time cost: " << timecost_ll_readdir << dendl;
+      #endif
       return r;
+    }
   }
 
   // can we read from our cache?
@@ -7884,8 +7926,15 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
     bool check_caps = true;
     if (!dirp->is_cached()) {
       int r = _readdir_get_frag(dirp);
-      if (r)
-  return r;
+      if (r){
+      #ifdef TRACE_COLLECTION
+      end_time_ll_readdir = ceph_clock_now();
+      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
+      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << " time cost: " << timecost_ll_readdir << dendl;
+      #endif
+      return r;
+    }
+  
       // _readdir_get_frag () may updates dirp->offset if the replied dirfrag is
       // different than the requested one. (our dirfragtree was outdated)
       check_caps = false;
@@ -7906,8 +7955,14 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
       int r;
       if (check_caps) {
   r = _getattr(entry.inode, caps, dirp->perms);
-  if (r < 0)
+  if (r < 0){
+    #ifdef TRACE_COLLECTION
+    end_time_ll_readdir = ceph_clock_now();
+    timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
+    ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << " time cost: " << timecost_ll_readdir << dendl;
+    #endif
     return r;
+  }
       }
 
       fill_statx(entry.inode, caps, &stx);
@@ -7925,12 +7980,25 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
 
       ldout(cct, 15) << " de " << de.d_name << " off " << hex << next_off - 1 << dec
          << " = " << r << dendl;
-      if (r < 0)
-  return r;
+      if (r < 0){
+        #ifdef TRACE_COLLECTION
+      end_time_ll_readdir = ceph_clock_now();
+      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
+      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << " time cost: " << timecost_ll_readdir << dendl;
+      #endif
+        return r;
+      }
 
       dirp->offset = next_off;
-      if (r > 0)
-  return r;
+      if (r > 0){
+        #ifdef TRACE_COLLECTION
+      end_time_ll_readdir = ceph_clock_now();
+      timecost_ll_readdir = end_time_ll_readdir - start_time_ll_readdir;
+      ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << " time cost: " << timecost_ll_readdir << dendl;
+      #endif
+      return r;
+    }
+  
     }
 
     if (dirp->next_offset > 2) {
@@ -10371,7 +10439,7 @@ int Client::ll_lookup(Inode *parent, const char *name, struct stat *attr,
   if(*out != NULL && (*out)->is_file()){
     filepath fp;
     (*out)->make_long_path(fp);
-    ldout(cct, 0) << " TRACE_COLLECTION " << " lookup " << fp << "time cost:" << timecost_ll_lookup << dendl;
+    ldout(cct, 0) << " TRACE_COLLECTION " << " lookup " << fp << " time cost: " << timecost_ll_lookup << dendl;
   }
   #endif
 
@@ -10609,7 +10677,7 @@ int Client::ll_getattr(Inode *in, struct stat *attr, const UserPerm& perms)
   if(in != NULL){
     filepath fp;
     in->make_long_path(fp);
-    ldout(cct, 0) << " TRACE_COLLECTION " << " getattr " << fp << "time cost" << timecost_ll_getattr << dendl;
+    ldout(cct, 0) << " TRACE_COLLECTION " << " getattr " << fp << " time cost: " << timecost_ll_getattr << dendl;
   }
   #endif
   return res;
@@ -10714,7 +10782,7 @@ int Client::ll_setattr(Inode *in, struct stat *attr, int mask,
   timecost_ll_setattr = end_time_ll_setattr - start_time_ll_setattr;
   filepath fp;
   in->make_long_path(fp);
-  ldout(cct, 0) << " TRACE_COLLECTION " << " setattr " << fp << "time cost" << timecost_ll_setattr << dendl;
+  ldout(cct, 0) << " TRACE_COLLECTION " << " setattr " << fp << " time cost: " << timecost_ll_setattr << dendl;
   #endif
   return res;
 }
@@ -11010,7 +11078,7 @@ int Client::ll_getxattr(Inode *in, const char *name, void *value,
     in->make_long_path(fp);
     end_time_ll_getxattr = ceph_clock_now();
     timecost_ll_getxattr = end_time_ll_getxattr - start_time_ll_getxattr;
-    ldout(cct, 0) << " TRACE_COLLECTION " << " getxattr " << fp << " " << name << "time cost" << timecost_ll_getxattr << dendl;
+    ldout(cct, 0) << " TRACE_COLLECTION " << " getxattr " << fp << " " << name << " time cost: " << timecost_ll_getxattr << dendl;
   }
   #endif
 
@@ -11328,6 +11396,13 @@ int Client::_removexattr(InodeRef &in, const char *name, const UserPerm& perms)
 
 int Client::ll_removexattr(Inode *in, const char *name, const UserPerm& perms)
 {
+  #ifdef TRACE_COLLECTION
+  utime_t start_time_ll_removexattr;
+  utime_t end_time_ll_removexattr;
+  utime_t timecost_ll_removexattr;
+  start_time_ll_removexattr = ceph_clock_now();
+  #endif
+  int retval;
   Mutex::Locker lock(client_lock);
 
   if (unmounting)
@@ -11340,10 +11415,9 @@ int Client::ll_removexattr(Inode *in, const char *name, const UserPerm& perms)
   tout(cct) << vino.ino.val << std::endl;
   tout(cct) << name << std::endl;
   #ifdef TRACE_COLLECTION
+  filepath fp;
   if(in != NULL){
-    filepath fp;
     in->make_long_path(fp);
-    ldout(cct, 0) << " TRACE_COLLECTION " << " removexattr " << fp << " " << name << dendl;
   }
   #endif
 
@@ -11352,8 +11426,14 @@ int Client::ll_removexattr(Inode *in, const char *name, const UserPerm& perms)
     if (r < 0)
       return r;
   }
+  retval = _removexattr(in, name, perms);
 
-  return _removexattr(in, name, perms);
+  #ifdef TRACE_COLLECTION
+  end_time_ll_removexattr = ceph_clock_now();
+  timecost_ll_removexattr = end_time_ll_removexattr - start_time_ll_removexattr;
+  ldout(cct, 0) << " TRACE_COLLECTION " << " removexattr " << fp << " " << name << " time cost: " << timecost_ll_removexattr << dendl;
+  #endif
+  return retval;
 }
 
 bool Client::_vxattrcb_quota_exists(Inode *in)
@@ -11929,7 +12009,7 @@ int Client::ll_mkdir(Inode *parent, const char *name, mode_t mode,
     (*out)->make_long_path(fp);
     end_time_ll_mkdir = ceph_clock_now();
     timecost_ll_mkdir = end_time_ll_mkdir - start_time_ll_mkdir;
-    ldout(cct, 0) << " TRACE_COLLECTION " << " mkdir " << fp << "time cost" << timecost_ll_mkdir << dendl;
+    ldout(cct, 0) << " TRACE_COLLECTION " << " mkdir " << fp << " time cost: " << timecost_ll_mkdir << dendl;
   }
   #endif
   return r;
@@ -12023,6 +12103,12 @@ int Client::_symlink(Inode *dir, const char *name, const char *target,
 int Client::ll_symlink(Inode *parent, const char *name, const char *value,
 		       struct stat *attr, Inode **out, const UserPerm& perms)
 {
+  #ifdef TRACE_COLLECTION
+  utime_t start_time_ll_symlink;
+  utime_t end_time_ll_symlink;
+  utime_t timecost_ll_symlink;
+  start_time_ll_symlink = ceph_clock_now();
+  #endif
   Mutex::Locker lock(client_lock);
 
   if (unmounting)
@@ -12057,7 +12143,9 @@ int Client::ll_symlink(Inode *parent, const char *name, const char *value,
   if(*out != NULL){
     filepath fp;
     in->make_long_path(fp);
-    ldout(cct, 0) << " TRACE_COLLECTION " << " symlink " << fp << " " << name << dendl;
+    end_time_ll_symlink = ceph_clock_now();
+    timecost_ll_symlink = end_time_ll_symlink - start_time_ll_symlink;
+    ldout(cct, 0) << " TRACE_COLLECTION " << " symlink " << fp << " " << name << " time cost: " << timecost_ll_symlink << dendl;
   }
   #endif
   return r;
@@ -12152,6 +12240,13 @@ int Client::_unlink(Inode *dir, const char *name, const UserPerm& perm)
 
 int Client::ll_unlink(Inode *in, const char *name, const UserPerm& perm)
 {
+  #ifdef TRACE_COLLECTION
+  utime_t start_time_ll_unlink;
+  utime_t end_time_ll_unlink;
+  utime_t timecost_ll_unlink;
+  start_time_ll_unlink = ceph_clock_now();
+  #endif
+  int retval;
   Mutex::Locker lock(client_lock);
 
   if (unmounting)
@@ -12160,10 +12255,10 @@ int Client::ll_unlink(Inode *in, const char *name, const UserPerm& perm)
   vinodeno_t vino = _get_vino(in);
 
   #ifdef TRACE_COLLECTION
+  filepath fp;
   if(in != NULL){
-    filepath fp;
     in->make_long_path(fp);
-    ldout(cct, 0) << " TRACE_COLLECTION " << " unlink " << fp << dendl;
+    
   }
   #endif
 
@@ -12177,7 +12272,13 @@ int Client::ll_unlink(Inode *in, const char *name, const UserPerm& perm)
     if (r < 0)
       return r;
   }
-  return _unlink(in, name, perm);
+  retval = _unlink(in, name, perm);
+  #ifdef TRACE_COLLECTION
+  end_time_ll_unlink = ceph_clock_now();
+  timecost_ll_unlink = end_time_ll_unlink - start_time_ll_unlink;
+  ldout(cct, 0) << " TRACE_COLLECTION " << " unlink " << fp << " time cost: " << timecost_ll_unlink << dendl;
+  #endif
+  return retval;
 }
 
 int Client::_rmdir(Inode *dir, const char *name, const UserPerm& perms)
@@ -12236,6 +12337,13 @@ int Client::_rmdir(Inode *dir, const char *name, const UserPerm& perms)
 
 int Client::ll_rmdir(Inode *in, const char *name, const UserPerm& perms)
 {
+  #ifdef TRACE_COLLECTION
+  utime_t start_time_ll_rmdir;
+  utime_t end_time_ll_rmdir;
+  utime_t timecost_ll_rmdir;
+  start_time_ll_rmdir = ceph_clock_now();
+  #endif
+  int retval;
   Mutex::Locker lock(client_lock);
 
   if (unmounting)
@@ -12249,10 +12357,9 @@ int Client::ll_rmdir(Inode *in, const char *name, const UserPerm& perms)
   tout(cct) << name << std::endl;
 
   #ifdef TRACE_COLLECTION
+  filepath fp;
   if(in != NULL){
-    filepath fp;
     in->make_long_path(fp);
-    ldout(cct, 0) << " TRACE_COLLECTION " << " rmdir " << fp << dendl;
   }
   #endif
 
@@ -12262,7 +12369,13 @@ int Client::ll_rmdir(Inode *in, const char *name, const UserPerm& perms)
       return r;
   }
 
-  return _rmdir(in, name, perms);
+  retval = _rmdir(in, name, perms);
+
+  #ifdef TRACE_COLLECTION
+  ldout(cct, 0) << " TRACE_COLLECTION " << " rmdir " << " time cost: " << timecost_ll_rmdir << fp << dendl;
+  #endif
+  
+  return retval;
 }
 
 int Client::_rename(Inode *fromdir, const char *fromname, Inode *todir, const char *toname, const UserPerm& perm)
@@ -12373,6 +12486,14 @@ int Client::_rename(Inode *fromdir, const char *fromname, Inode *todir, const ch
 int Client::ll_rename(Inode *parent, const char *name, Inode *newparent,
 		      const char *newname, const UserPerm& perm)
 {
+  int retval;
+  #ifdef TRACE_COLLECTION
+  utime_t start_time_ll_rename;
+  utime_t end_time_ll_rename;
+  utime_t timecost_ll_rename;
+  start_time_ll_rename = ceph_clock_now();
+  #endif
+
   Mutex::Locker lock(client_lock);
 
   if (unmounting)
@@ -12390,11 +12511,11 @@ int Client::ll_rename(Inode *parent, const char *name, Inode *newparent,
   tout(cct) << newname << std::endl;
 
   #ifdef TRACE_COLLECTION
+  filepath fp;
   if(parent != NULL){
-    filepath fp;
     parent->make_long_path(fp);
     fp.push_dentry(name);
-    ldout(cct, 0) << " TRACE_COLLECTION " << " rename " << fp << " " << newname << dendl;
+    
   }
   #endif
 
@@ -12406,8 +12527,14 @@ int Client::ll_rename(Inode *parent, const char *name, Inode *newparent,
     if (r < 0 && r != -ENOENT)
       return r;
   }
+  retval = _rename(parent, name, newparent, newname, perm);
 
-  return _rename(parent, name, newparent, newname, perm);
+  #ifdef TRACE_COLLECTION
+  end_time_ll_rename = ceph_clock_now();
+  timecost_ll_rename = end_time_ll_rename - start_time_ll_rename;
+  ldout(cct, 0) << " TRACE_COLLECTION " << " rename " << fp << " " << newname << " time cost: " << timecost_ll_rename << dendl;
+  #endif  
+  return retval;
 }
 
 int Client::_link(Inode *in, Inode *dir, const char *newname, const UserPerm& perm, InodeRef *inp)
@@ -12634,7 +12761,7 @@ int Client::ll_opendir(Inode *in, int flags, dir_result_t** dirpp,
     in->make_long_path(fp);
     end_time_ll_opendir = ceph_clock_now();
     timecost_ll_opendir = end_time_ll_opendir - start_time_ll_opendir;
-    ldout(cct, 0) << " TRACE_COLLECTION " << " opendir " << fp << "time cost" << timecost_ll_opendir << dendl;
+    ldout(cct, 0) << " TRACE_COLLECTION " << " opendir " << fp << " time cost: " << timecost_ll_opendir << dendl;
   }
   #endif
   return r;
@@ -12670,7 +12797,7 @@ int Client::ll_releasedir(dir_result_t *dirp)
   #ifdef TRACE_COLLECTION
   end_time_ll_releasedir = ceph_clock_now();
   timecost_ll_releasedir = end_time_ll_releasedir - start_time_ll_releasedir;
-  ldout(cct, 0) << " TRACE_COLLECTION " << " closedir " << fp << "time cost" << timecost_ll_releasedir << dendl;
+  ldout(cct, 0) << " TRACE_COLLECTION " << " closedir " << fp << " time cost: " << timecost_ll_releasedir << dendl;
   #endif
 
   return 0;
@@ -12741,9 +12868,9 @@ int Client::ll_open(Inode *in, int flags, Fh **fhp, const UserPerm& perms)
     end_time_ll_open = ceph_clock_now();
     timecost_ll_open = end_time_ll_open - start_time_ll_open;
     if(flags & (O_WRONLY | O_RDWR | O_CREAT | O_TRUNC | O_APPEND))
-      ldout(cct, 0) << " TRACE_COLLECTION " << " open.w " << fp << "time cost" << timecost_ll_open << dendl;
+      ldout(cct, 0) << " TRACE_COLLECTION " << " open.w " << fp << " time cost: " << timecost_ll_open << dendl;
     else
-      ldout(cct, 0) << " TRACE_COLLECTION " << " open.r " << fp << "time cost" << timecost_ll_open << dendl;
+      ldout(cct, 0) << " TRACE_COLLECTION " << " open.r " << fp << " time cost: " << timecost_ll_open << dendl;
   }
   #endif
   return r;
@@ -12871,7 +12998,7 @@ int Client::ll_create(Inode *parent, const char *name, mode_t mode,
 
     end_time_ll_create = ceph_clock_now();
     timecost_ll_create = end_time_ll_create - start_time_ll_create;
-    ldout(cct, 0) << " TRACE_COLLECTION " << " create " << fp << "time cost" << timecost_ll_create << dendl;
+    ldout(cct, 0) << " TRACE_COLLECTION " << " create " << fp << " time cost: " << timecost_ll_create << dendl;
   }
   #endif
 
@@ -12951,7 +13078,7 @@ int Client::ll_read(Fh *fh, loff_t off, loff_t len, bufferlist *bl)
   #ifdef TRACE_COLLECTION
   end_time_ll_read = ceph_clock_now();
   timecost_ll_read = end_time_ll_read - start_time_ll_read;
-  ldout(cct, 0) << " TRACE_COLLECTION " << " read " << fp << " offset " << off << " len " << len << "time cost" << timecost_ll_read << dendl;
+  ldout(cct, 0) << " TRACE_COLLECTION " << " read " << fp << " offset " << off << " len " << len << " time cost: " << timecost_ll_read << dendl;
   #endif
   return retval;
 }
@@ -13097,6 +13224,13 @@ int Client::ll_commit_blocks(Inode *in,
 
 int Client::ll_write(Fh *fh, loff_t off, loff_t len, const char *data)
 {
+  #ifdef TRACE_COLLECTION
+  utime_t start_time_ll_write;
+  utime_t end_time_ll_write;
+  utime_t timecost_ll_write;
+  start_time_ll_write = ceph_clock_now();
+  #endif
+
   Mutex::Locker lock(client_lock);
   ldout(cct, 3) << "ll_write " << fh << " " << fh->inode->ino << " " << off <<
     "~" << len << dendl;
@@ -13115,7 +13249,9 @@ int Client::ll_write(Fh *fh, loff_t off, loff_t len, const char *data)
   if(fh->inode != NULL){
     filepath fp;
     fh->inode->make_long_path(fp);
-    ldout(cct, 0) << " TRACE_COLLECTION " << " write " << fp << " offset " << off << " len " << len << dendl;
+    end_time_ll_write = ceph_clock_now();
+    timecost_ll_write = end_time_ll_write - start_time_ll_write;
+    ldout(cct, 0) << " TRACE_COLLECTION " << " write " << fp << " offset " << off << " len " << len << " time cost: " << timecost_ll_write << dendl;
   }
   #endif
   return r;
@@ -13150,7 +13286,7 @@ int Client::ll_flush(Fh *fh)
   #ifdef TRACE_COLLECTION
   end_time_ll_flush = ceph_clock_now();
   timecost_ll_flush = end_time_ll_flush - start_time_ll_flush;
-  ldout(cct, 0) << " TRACE_COLLECTION " << " flush " << fp << "time cost" << timecost_ll_flush << dendl;
+  ldout(cct, 0) << " TRACE_COLLECTION " << " flush " << fp << " time cost: " << timecost_ll_flush << dendl;
   #endif
   return retval;
 }
@@ -13390,7 +13526,7 @@ int Client::ll_release(Fh *fh)
   #ifdef TRACE_COLLECTION
   end_time_ll_release = ceph_clock_now();
   timecost_ll_release = end_time_ll_release - start_time_ll_release;
-  ldout(cct, 0) << " TRACE_COLLECTION " << " close " << fp << "time cost" << timecost_ll_release << dendl;
+  ldout(cct, 0) << " TRACE_COLLECTION " << " close " << fp << " time cost: " << timecost_ll_release << dendl;
   #endif
 
   return retval;
