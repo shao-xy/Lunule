@@ -7792,7 +7792,7 @@ int Client::readdir_r_cb(dir_result_t *d, add_dirent_cb_t cb, void *p,
   filepath fp;
   if(dirp->inode != NULL){  
     dirp->inode->make_long_path(fp);
-    ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << dendl;
+    //ldout(cct, 0) << " TRACE_COLLECTION " << " readdir " << fp << dendl;
   }
   #endif
 
