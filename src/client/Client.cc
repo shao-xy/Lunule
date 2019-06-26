@@ -10320,6 +10320,13 @@ Inode *Client::open_snapdir(Inode *diri)
 int Client::ll_lookup(Inode *parent, const char *name, struct stat *attr,
 		      Inode **out, const UserPerm& perms)
 {
+  #ifdef TRACE_COLLECTION
+  utime_t start_time_ll_lookup;
+  utime_t end_time_ll_lookup;
+  utime_t timecost_ll_lookup;
+  start_time_ll_lookup = ceph_clock_now();
+  #endif
+
   Mutex::Locker lock(client_lock);
   vinodeno_t vparent = _get_vino(parent);
   ldout(cct, 3) << "ll_lookup " << vparent << " " << name << dendl;
@@ -10354,13 +10361,20 @@ int Client::ll_lookup(Inode *parent, const char *name, struct stat *attr,
 	  << " -> " << r << " (" << hex << attr->st_ino << dec << ")" << dendl;
   tout(cct) << attr->st_ino << std::endl;
   *out = in.get();
+
+  #ifdef TRACE_COLLECTION
+  end_time_ll_lookup = ceph_clock_now();
+  timecost_ll_lookup = end_time_ll_lookup - start_time_ll_lookup;
+  #endif
+
   #ifdef TRACE_COLLECTION
   if(*out != NULL && (*out)->is_file()){
     filepath fp;
     (*out)->make_long_path(fp);
-    ldout(cct, 0) << " TRACE_COLLECTION " << " lookup " << fp << dendl;
+    ldout(cct, 0) << " TRACE_COLLECTION " << " lookup " << fp << "time cost:" << timecost_ll_lookup << dendl;
   }
   #endif
+
   return r;
 }
 
