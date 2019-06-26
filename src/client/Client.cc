@@ -12633,7 +12633,7 @@ int Client::ll_opendir(Inode *in, int flags, dir_result_t** dirpp,
     filepath fp;
     in->make_long_path(fp);
     end_time_ll_opendir = ceph_clock_now();
-    timecost_ll_opendir = end_time_ll_ - start_time_ll_;
+    timecost_ll_opendir = end_time_ll_opendir - start_time_ll_opendir;
     ldout(cct, 0) << " TRACE_COLLECTION " << " opendir " << fp << "time cost" << timecost_ll_opendir << dendl;
   }
   #endif
@@ -12659,10 +12659,9 @@ int Client::ll_releasedir(dir_result_t *dirp)
   
 
   #ifdef TRACE_COLLECTION
+  filepath fp;
   if(dirp->inode != NULL){
-    filepath fp;
     dirp->inode->make_long_path(fp);
-    
   }
   #endif
 
@@ -12939,8 +12938,8 @@ int Client::ll_read(Fh *fh, loff_t off, loff_t len, bufferlist *bl)
   tout(cct) << len << std::endl;
 
   #ifdef TRACE_COLLECTION
+  filepath fp;
   if(fh->inode != NULL){
-    filepath fp;
     fh->inode->make_long_path(fp);
   }
   #endif
@@ -13138,8 +13137,8 @@ int Client::ll_flush(Fh *fh)
   tout(cct) << (unsigned long)fh << std::endl;
 
   #ifdef TRACE_COLLECTION
+  filepath fp;
   if(fh->inode != NULL){
-    filepath fp;
     fh->inode->make_long_path(fp);
   }
   #endif
@@ -13375,8 +13374,8 @@ int Client::ll_release(Fh *fh)
   tout(cct) << (unsigned long)fh << std::endl;
 
   #ifdef TRACE_COLLECTION
+  filepath fp;
   if(fh->inode != NULL){
-    filepath fp;
     fh->inode->make_long_path(fp);
   }
   #endif
