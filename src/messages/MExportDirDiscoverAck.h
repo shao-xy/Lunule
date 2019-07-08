@@ -20,17 +20,31 @@
 
 class MExportDirDiscoverAck : public Message {
   dirfrag_t dirfrag;
+#ifdef MDS_MONITOR_MIGRATOR
+  utime_t latency;
+#endif
   bool success;
 
  public:
   inodeno_t get_ino() { return dirfrag.ino; }
   dirfrag_t get_dirfrag() { return dirfrag; }
+#ifdef MDS_MONITOR_MIGRATOR
+  utime_t get_latency() { return latency; }
+#endif
   bool is_success() { return success; }
 
   MExportDirDiscoverAck() : Message(MSG_MDS_EXPORTDIRDISCOVERACK) {}
+#ifdef MDS_MONITOR_MIGRATOR
+  MExportDirDiscoverAck(dirfrag_t df, utime_t latency, uint64_t tid, bool s=true) :
+#else
   MExportDirDiscoverAck(dirfrag_t df, uint64_t tid, bool s=true) :
+#endif
     Message(MSG_MDS_EXPORTDIRDISCOVERACK),
+#ifdef MDS_MONITOR_MIGRATOR
+    dirfrag(df), latency(latency), success(s) {
+#else
     dirfrag(df), success(s) {
+#endif
     set_tid(tid);
   }
 private:
@@ -40,6 +54,9 @@ public:
   const char *get_type_name() const override { return "ExDisA"; }
   void print(ostream& o) const override {
     o << "export_discover_ack(" << dirfrag;
+#ifdef MDS_MONITOR_MIGRATOR
+    o << " latency " << latency;
+#endif
     if (success) 
       o << " success)";
     else
@@ -49,10 +66,16 @@ public:
   void decode_payload() override {
     bufferlist::iterator p = payload.begin();
     ::decode(dirfrag, p);
+#ifdef MDS_MONITOR_MIGRATOR
+    ::decode(latency, p);
+#endif
     ::decode(success, p);
   }
   void encode_payload(uint64_t features) override {
     ::encode(dirfrag, payload);
+#ifdef MDS_MONITOR_MIGRATOR
+    ::encode(latency, payload);
+#endif
     ::encode(success, payload);
   }
 };

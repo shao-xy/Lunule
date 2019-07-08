@@ -20,14 +20,25 @@
 
 class MExportDirPrepAck : public Message {
   dirfrag_t dirfrag;
+#ifdef MDS_MONITOR_MIGRATOR
+  utime_t latency;
+#endif
   bool success;
 
  public:
   dirfrag_t get_dirfrag() { return dirfrag; }
+#ifdef MDS_MONITOR_MIGRATOR
+  utime_t get_latency() { return latency; }
+#endif
   
   MExportDirPrepAck() {}
+#ifdef MDS_MONITOR_MIGRATOR
+  MExportDirPrepAck(dirfrag_t df, utime_t latency, bool s, uint64_t tid) :
+    Message(MSG_MDS_EXPORTDIRPREPACK), dirfrag(df), latency(latency), success(s) {
+#else
   MExportDirPrepAck(dirfrag_t df, bool s, uint64_t tid) :
     Message(MSG_MDS_EXPORTDIRPREPACK), dirfrag(df), success(s) {
+#endif
     set_tid(tid);
   }
 private:
@@ -38,15 +49,24 @@ public:
   const char *get_type_name() const override { return "ExPAck"; }
   void print(ostream& o) const override {
     o << "export_prep_ack(" << dirfrag << (success ? " success)" : " fail)");
+#ifdef MDS_MONITOR_MIGRATOR
+    o << " latency " << latency;
+#endif
   }
 
   void decode_payload() override {
     bufferlist::iterator p = payload.begin();
     ::decode(dirfrag, p);
+#ifdef MDS_MONITOR_MIGRATOR
+    ::decode(latency, p);
+#endif
     ::decode(success, p);
   }
   void encode_payload(uint64_t features) override {
     ::encode(dirfrag, payload);
+#ifdef MDS_MONITOR_MIGRATOR
+    ::encode(latency, payload);
+#endif
     ::encode(success, payload);
   }
 };

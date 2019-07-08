@@ -122,10 +122,13 @@ private:
   std::map<CDir*, utime_t> export_breakdown_endode;
   std::map<CDir*, utime_t> export_breakdown_decode;
   std::map<CDir*, utime_t> rtt_discover_start;
+  std::map<CDir*, utime_t> rtt_discover_importer_lat;
   std::map<CDir*, utime_t> rtt_discover_finish;
   std::map<CDir*, utime_t> rtt_prepare_start;
+  std::map<CDir*, utime_t> rtt_prepare_importer_lat;
   std::map<CDir*, utime_t> rtt_prepare_finish;
   std::map<CDir*, utime_t> rtt_export_start;
+  std::map<CDir*, utime_t> rtt_export_importer_lat;
   std::map<CDir*, utime_t> rtt_export_finish;
 #endif
 
@@ -208,7 +211,11 @@ protected:
   void import_reverse_final(CDir *dir);
   void import_notify_abort(CDir *dir, set<CDir*>& bounds);
   void import_notify_finish(CDir *dir, set<CDir*>& bounds);
+#ifdef MDS_MONITOR_MIGRATOR
+  void import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from, utime_t ts_start,
+#else
   void import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from,
+#endif
 			   map<client_t,entity_inst_t> &imported_client_map,
 			   map<client_t,uint64_t>& sseqmap);
   void handle_export_finish(MExportDirFinish *m);

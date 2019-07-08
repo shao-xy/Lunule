@@ -21,12 +21,23 @@ class MExportDirAck : public Message {
 public:
   dirfrag_t dirfrag;
   bufferlist imported_caps;
+#ifdef MDS_MONITOR_MIGRATOR
+  utime_t latency;
+#endif
 
   dirfrag_t get_dirfrag() { return dirfrag; }
+#ifdef MDS_MONITOR_MIGRATOR
+  utime_t get_latency() { return latency; }
+#endif
   
   MExportDirAck() : Message(MSG_MDS_EXPORTDIRACK) {}
+#ifdef MDS_MONITOR_MIGRATOR
+  MExportDirAck(dirfrag_t df, utime_t latency, uint64_t tid) :
+    Message(MSG_MDS_EXPORTDIRACK), dirfrag(df), latency(latency) {
+#else
   MExportDirAck(dirfrag_t df, uint64_t tid) :
     Message(MSG_MDS_EXPORTDIRACK), dirfrag(df) {
+#endif
     set_tid(tid);
   }
 private:
@@ -42,10 +53,16 @@ public:
     bufferlist::iterator p = payload.begin();
     ::decode(dirfrag, p);
     ::decode(imported_caps, p);
+#ifdef MDS_MONITOR_MIGRATOR
+    ::decode(latency, p);
+#endif
   }
   void encode_payload(uint64_t features) override {
     ::encode(dirfrag, payload);
     ::encode(imported_caps, payload);
+#ifdef MDS_MONITOR_MIGRATOR
+    ::encode(latency, payload);
+#endif
   }
 
 };

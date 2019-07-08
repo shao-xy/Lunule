@@ -1022,6 +1022,8 @@ void Migrator::handle_export_discover_ack(MExportDirDiscoverAck *m)
 	  << " on " << *dir << dendl;
   dout(7) << __func__ << " Youxu [4]get a ExportDirDiscoverACK message!" << dendl;
   #ifdef MDS_MONITOR_MIGRATOR
+  rtt_discover_importer_lat[dir] = m->get_latency();
+  dout(7) << " MDS_MONITOR_MIGRATOR rtt_discover_import_lat " << m->get_latency() << dendl;
   rtt_discover_finish[dir] = ceph_clock_now();
   dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (1) Get a ExportDirDiscoverACK message on " << *dir << dendl;
   #endif
@@ -1417,6 +1419,8 @@ void Migrator::handle_export_prep_ack(MExportDirPrepAck *m)
   dout(7) << __func__ << " Youxu [8]get a prepare ack message!" << dendl;
 
   #ifdef MDS_MONITOR_MIGRATOR
+  rtt_prepare_importer_lat[dir] = m->get_latency();
+  dout(7) << " MDS_MONITOR_MIGRATOR rtt_prepare_import_lat " << m->get_latency() << dendl;
   rtt_prepare_finish[dir] = ceph_clock_now();
   dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (1) start handle export prep ack: dir: "<< *dir << dendl;
   #endif 
@@ -1944,6 +1948,8 @@ void Migrator::handle_export_ack(MExportDirAck *m)
 
   #ifdef MDS_MONITOR_MIGRATOR
   rtt_export_finish[dir] = ceph_clock_now();
+  dout(7) << " MDS_MONITOR_MIGRATOR rtt_export_import_lat " << m->get_latency() << dendl;
+  rtt_export_importer_lat[dir] = m->get_latency();
   dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (1) START handle export dir ack, dir : " << *dir << dendl;
   #endif 
 
@@ -2341,10 +2347,10 @@ void Migrator::export_finish(CDir *dir)
     utime_t lat_last = export_record_finish[dir] - export_record_end_export[dir];
     utime_t lat_migrate = export_record_finish[dir] - export_record_start[dir];
     utime_t rtt, rtt_discover, rtt_prepare, rtt_export;
-    if(rtt_discover_start.count(dir) && rtt_discover_finish.count(dir) && rtt_prepare_start.count(dir) && rtt_prepare_finish.count(dir) && rtt_export_start.count(dir) && rtt_export_finish.count(dir)){
-      rtt_discover = rtt_discover_finish[dir] - rtt_discover_start[dir];
-      rtt_prepare = rtt_prepare_finish[dir] - rtt_prepare_start[dir];
-      rtt_export = rtt_export_finish[dir] - rtt_export_start[dir];
+    if(rtt_discover_start.count(dir) && rtt_discover_importer_lat.count(dir) && rtt_discover_finish.count(dir) && rtt_prepare_start.count(dir) && rtt_prepare_importer_lat.count(dir) && rtt_prepare_finish.count(dir) && rtt_export_start.count(dir) && rtt_export_importer_lat.count(dir) && rtt_export_finish.count(dir)){
+      rtt_discover = rtt_discover_finish[dir] - rtt_discover_start[dir] - rtt_discover_importer_lat[dir];
+      rtt_prepare = rtt_prepare_finish[dir] - rtt_prepare_start[dir] - rtt_prepare_importer_lat[dir];
+      rtt_export = rtt_export_finish[dir] - rtt_export_start[dir] - rtt_export_importer_lat[dir];
       rtt =  rtt_discover + rtt_prepare + rtt_export;
     }
     
@@ -2396,6 +2402,8 @@ void Migrator::handle_export_discover(MExportDirDiscover *m)
 
   dout(7) << "handle_export_discover on " << m->get_path() << dendl;
   dout(7) << __func__ << " Youxu [2]get a ExportDirDiscover message!" << dendl;
+
+  utime_t _ex_start = ceph_clock_now();
    
   // note import state
   dirfrag_t df = m->get_dirfrag();
@@ -2405,7 +2413,11 @@ void Migrator::handle_export_discover(MExportDirDiscover *m)
 
   if (!mds->is_active()) {
     dout(7) << " not active, send NACK " << dendl;
+#ifdef MDS_MONITOR_MIGRATOR
+    mds->send_message_mds(new MExportDirDiscoverAck(df, ceph_clock_now() - _ex_start, m->get_tid(), false), from);
+#else
     mds->send_message_mds(new MExportDirDiscoverAck(df, m->get_tid(), false), from);
+#endif
     m->put();
     return;
   }
@@ -2478,10 +2490,13 @@ void Migrator::handle_export_discover(MExportDirDiscover *m)
   // reply
   dout(7) << " sending export_discover_ack on " << *in << dendl;
   dout(7) << __func__ << " Youxu [3]send a ExportDirDiscoverACK message!" << dendl;
-  #ifdef MDS_MONITOR_MIGRATOR
+#ifdef MDS_MONITOR_MIGRATOR
   dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (3) Send a ExportDirDiscoverACK message." << dendl;
-  #endif
+  utime_t _ex_importer = ceph_clock_now() - _ex_start;
+  mds->send_message_mds(new MExportDirDiscoverAck(df, _ex_importer, m->get_tid()), p_state->peer);
+#else
   mds->send_message_mds(new MExportDirDiscoverAck(df, m->get_tid()), p_state->peer);
+#endif
   m->put();
   assert (g_conf->mds_kill_import_at != 2);  
 }
@@ -2544,6 +2559,10 @@ void Migrator::handle_export_prep(MExportDirPrep *m)
 {
   mds_rank_t oldauth = mds_rank_t(m->get_source().num());
   assert(oldauth != mds->get_nodeid());
+
+#ifdef MDS_MONITOR_MIGRATOR
+  utime_t _ex_start = ceph_clock_now();
+#endif
 
   dout(7) << __func__ << " Youxu [6]get a prepare message!" << dendl;
 
@@ -2807,7 +2826,13 @@ void Migrator::handle_export_prep(MExportDirPrep *m)
   // ok!
   dout(7) << " sending export_prep_ack on " << *dir << dendl;
   dout(7) << __func__ << " Youxu [7]send a prepare ACk message!" << dendl;
+
+
+#ifdef MDS_MONITOR_MIGRATOR
+  mds->send_message(new MExportDirPrepAck(dir->dirfrag(), ceph_clock_now() - _ex_start, success, m->get_tid()), m->get_connection());
+#else
   mds->send_message(new MExportDirPrepAck(dir->dirfrag(), success, m->get_tid()), m->get_connection());
+#endif
 
   assert(g_conf->mds_kill_import_at != 4);
   // done 
@@ -2821,15 +2846,27 @@ class C_MDS_ImportDirLoggedStart : public MigratorLogContext {
   dirfrag_t df;
   CDir *dir;
   mds_rank_t from;
+#ifdef MDS_MONITOR_MIGRATOR
+  utime_t ts_start;
+#endif
 public:
   map<client_t,entity_inst_t> imported_client_map;
   map<client_t,uint64_t> sseqmap;
 
+#ifdef MDS_MONITOR_MIGRATOR
+  C_MDS_ImportDirLoggedStart(Migrator *m, CDir *d, mds_rank_t f, utime_t ts_start_) :
+    MigratorLogContext(m), df(d->dirfrag()), dir(d), from(f), ts_start(ts_start_) {
+#else
   C_MDS_ImportDirLoggedStart(Migrator *m, CDir *d, mds_rank_t f) :
     MigratorLogContext(m), df(d->dirfrag()), dir(d), from(f) {
+#endif
   }
   void finish(int r) override {
+#ifdef MDS_MONITOR_MIGRATOR
+    mig->import_logged_start(df, dir, from, ts_start, imported_client_map, sseqmap);
+#else
     mig->import_logged_start(df, dir, from, imported_client_map, sseqmap);
+#endif
   }
 };
 
@@ -2839,6 +2876,8 @@ void Migrator::handle_export_dir(MExportDir *m)
   assert (g_conf->mds_kill_import_at != 5);
   CDir *dir = cache->get_dirfrag(m->dirfrag);
   assert(dir);
+
+  utime_t ts_start = ceph_clock_now();
 
   mds_rank_t oldauth = mds_rank_t(m->get_source().num());
   dout(7) << "handle_export_dir importing " << *dir << " from " << oldauth << dendl;
@@ -2862,7 +2901,11 @@ void Migrator::handle_export_dir(MExportDir *m)
 
   cache->show_subtrees();
 
+#ifdef MDS_MONITOR_MIGRATOR
+  C_MDS_ImportDirLoggedStart *onlogged = new C_MDS_ImportDirLoggedStart(this, dir, oldauth, ts_start);
+#else
   C_MDS_ImportDirLoggedStart *onlogged = new C_MDS_ImportDirLoggedStart(this, dir, oldauth);
+#endif
 
   // start the journal entry
   EImportStart *le = new EImportStart(mds->mdlog, dir->dirfrag(), m->bounds, oldauth);
@@ -3208,8 +3251,11 @@ void Migrator::import_reverse_final(CDir *dir)
 
 
 
-
+#ifdef MDS_MONITOR_MIGRATOR
+void Migrator::import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from, utime_t ts_start,
+#else
 void Migrator::import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from,
+#endif
 				   map<client_t,entity_inst_t>& imported_client_map,
 				   map<client_t,uint64_t>& sseqmap)
 {
@@ -3246,7 +3292,11 @@ void Migrator::import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from,
   // test surviving observer of a failed migration that did not complete
   //assert(dir->replica_map.size() < 2 || mds->get_nodeid() != 0);
 
+#ifdef MDS_MONITOR_MIGRATOR
+  MExportDirAck *ack = new MExportDirAck(dir->dirfrag(), ceph_clock_now() - ts_start, it->second.tid);
+#else
   MExportDirAck *ack = new MExportDirAck(dir->dirfrag(), it->second.tid);
+#endif
   ::encode(imported_caps, ack->imported_caps);
   dout(7) << __func__ << " Youxu [15]send exportdir ack message!" << dendl;
   mds->send_message_mds(ack, from);
