@@ -60,7 +60,7 @@ MDSRank::MDSRank(
   :
     whoami(whoami_), incarnation(0),
     mds_lock(mds_lock_), cct(msgr->cct), clog(clog_), timer(timer_),
-    mdsmap(mdsmap_),
+    mdsmap(mdsmap_), ipc_msgr(NULL),
     objecter(new Objecter(g_ceph_context, msgr, monc_, nullptr, 0, 0)),
     server(NULL), mdcache(NULL), locker(NULL), mdlog(NULL),
     balancer(NULL), scrubstack(NULL),
@@ -116,6 +116,8 @@ MDSRank::MDSRank(
 
   server = new Server(this);
   locker = new Locker(this, mdcache);
+
+  ipc_msgr = new IPCMessenger(this);
 
   op_tracker.set_complaint_and_threshold(cct->_conf->mds_op_complaint_time,
                                          cct->_conf->mds_op_log_threshold);
@@ -889,6 +891,16 @@ void MDSRank::send_message_mds(Message *m, mds_rank_t mds)
     messenger->send_message(new MMDSMap(monc->get_fsid(), mdsmap),
 			    mdsmap->get_inst(mds));
     peer_mdsmap_epoch[mds] = mdsmap->get_epoch();
+  }
+  
+  // check if target on the same node
+  const entity_inst_t target_entity = mdsmap->get_inst(mds);
+  const entity_inst_t my_entity = mdsmap->get_inst(whoami);
+
+  if (target_entity.addr.is_same_host(my_entity.addr)) {
+    dout(10) << __func__ << " [SCALING-MDS] Same host detected. Communicate through IPC." << dendl;
+    if (ipc_msgr->send_message_mds(m, mds))
+      return;
   }
 
   // send message

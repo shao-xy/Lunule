@@ -881,6 +881,7 @@ endif()
 install(TARGETS ceph-osd DESTINATION bin)
 
 add_subdirectory(mds)
+add_subdirectory(mds_scaling)
 set(ceph_mds_srcs
   ceph_mds.cc)
 add_executable(ceph-mds ${ceph_mds_srcs})

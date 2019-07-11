@@ -38,6 +38,8 @@
 // benefit of those including this header and using MDSRank::logger
 #include "common/perf_counters.h"
 
+#include "mds_scaling/IPC.h"
+
 enum {
   l_mds_first = 2000,
   l_mds_request,
@@ -116,6 +118,8 @@ class Finisher;
 class MMDSMap;
 class ScrubStack;
 
+class IPCMessenger;
+
 /**
  * The public part of this class's interface is what's exposed to all
  * the various subsystems (server, mdcache, etc), such as pointers
@@ -160,6 +164,10 @@ class MDSRank {
     SafeTimer &timer;
 
     MDSMap *&mdsmap;
+
+    // Messenger for IPC
+    friend class IPCMessenger;
+    IPCMessenger *ipc_msgr;
 
     Objecter     *objecter;
 
