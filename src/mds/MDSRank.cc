@@ -140,6 +140,8 @@ MDSRank::~MDSRank()
   if (snapclient) { delete snapclient; snapclient = NULL; }
   if (mdsmap) { delete mdsmap; mdsmap = 0; }
 
+  if (ipc_msgr) { delete ipc_msgr; ipc_msgr = NULL; }
+
   if (server) { delete server; server = 0; }
   if (locker) { delete locker; locker = 0; }
 
