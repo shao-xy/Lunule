@@ -104,8 +104,8 @@ public:
     }
   }
 
-public:
- Migrator(MDSRank *m, MDCache *c);
+ // -- cons --
+ Migrator(MDSRank *m, MDCache *c) : mds(m),cache(c){};
 
 #ifdef MDS_MONITOR_MIGRATOR
 private:
