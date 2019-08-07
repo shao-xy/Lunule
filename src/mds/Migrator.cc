@@ -52,7 +52,8 @@
 #include "messages/MExportCapsAck.h"
 #include "messages/MGatherCaps.h"
 
-#include "MigratorIPC.h"
+#include "Fim.h"
+
 /*
  * this is what the dir->dir_auth values look like
  *
@@ -81,17 +82,7 @@
 #define dout_prefix *_dout << "mds." << mds->get_nodeid() << ".migrator "
 
 // -- cons --
-Migrator::Migrator(MDSRank *m, MDCache *c) : mds(m), cache(c) {
-  #ifdef MDS_MIGRATOR_IPC
-  pthread_t tid_ipc_migrate;
-  int res = pthread_create(&tid_ipc_migrate, NULL, ipc_migrator, this);
-  if(res < 0){
-    dout(0) << __func__ << " create ipc thread failed." << dendl;
-    exit(-1); 
-  }
-  pthread_detach(tid_ipc_migrate);
-  #endif
-}
+Migrator::Migrator(MDSRank *m, MDCache *c) : mds(m), cache(c) {}
 
 class MigratorContext : public MDSInternalContextBase {
 protected:
@@ -730,6 +721,7 @@ void Migrator::maybe_do_queued_export()
     dout(6) << " MDS_MONITOR_MIGRATOR " << __func__ << " Export_dir START on DIR " << *dir << " at " << export_record_start[dir] << dendl;
     #endif
 
+    Fim fim;
     export_dir(dir, dest);
   }
   running = false;

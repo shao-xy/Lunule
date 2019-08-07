@@ -20,11 +20,6 @@
 #include "include/types.h"
 
 #define MDS_MONITOR_MIGRATOR
-#define MDS_MIGRATOR_IPC
-
-#ifdef MDS_MIGRATOR_IPC
-#include "MigratorIPC.h"
-#endif
 
 #include <map>
 #include <list>
@@ -372,11 +367,6 @@ private:
   MDSRank *mds;
   MDCache *cache;
 
-#ifdef MDS_MIGRATOR_IPC
-public:
-  friend void *ipc_migrator(void *arg);
-  friend void test(Migrator *mig);
-#endif
 };
 
 #endif
