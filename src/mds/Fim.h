@@ -31,6 +31,6 @@ public:
 	Fim(){};
 	~Fim(){};
 
-}
+};
 
 #endif

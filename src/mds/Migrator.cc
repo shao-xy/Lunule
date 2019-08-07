@@ -82,8 +82,6 @@
 #define dout_prefix *_dout << "mds." << mds->get_nodeid() << ".migrator "
 
 // -- cons --
-Migrator::Migrator(MDSRank *m, MDCache *c) : mds(m), cache(c) {}
-
 class MigratorContext : public MDSInternalContextBase {
 protected:
   Migrator *mig;
