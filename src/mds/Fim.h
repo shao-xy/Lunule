@@ -28,8 +28,8 @@
 
 class Fim{
 public:
-	Fim(){};
-	~Fim(){};
+	Fim();
+	~Fim();
 
 };
 
