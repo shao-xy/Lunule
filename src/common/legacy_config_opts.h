@@ -461,6 +461,7 @@ OPTION(mds_bal_sample_interval, OPT_DOUBLE)  // every 3 seconds
 OPTION(mds_bal_replicate_threshold, OPT_FLOAT)
 OPTION(mds_bal_unreplicate_threshold, OPT_FLOAT)
 OPTION(mds_bal_frag, OPT_BOOL)
+OPTION(mds_migrator_fim, OPT_BOOL)
 OPTION(mds_bal_split_size, OPT_INT)
 OPTION(mds_bal_split_rd, OPT_FLOAT)
 OPTION(mds_bal_split_wr, OPT_FLOAT)

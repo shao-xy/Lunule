@@ -719,7 +719,9 @@ void Migrator::maybe_do_queued_export()
     dout(6) << " MDS_MONITOR_MIGRATOR " << __func__ << " Export_dir START on DIR " << *dir << " at " << export_record_start[dir] << dendl;
     #endif
 
-    Fim fim;
+    if(g_conf->get_val<bool>("mds_migrator_fim") == true)
+      fim_export_dir(dir, dest);
+  
     export_dir(dir, dest);
   }
   running = false;
@@ -790,6 +792,14 @@ public:
     mig->dispatch_export_dir(mdr, count);
   }
 };
+
+/** fim_export_dir(dir, dest)
+ * migrate dir to dest mds through fim(Faster IPC-based Migrator using unlocking COW method)
+ */
+void Migrator::fim_export_dir(CDir *dir, mds_rank_t dest){
+  Fim fim;
+  dout(0) << __func__ << " export dir " << *dir << " done." << dendl;
+}
 
 
 /** export_dir(dir, dest)

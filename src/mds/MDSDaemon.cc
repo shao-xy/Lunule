@@ -101,6 +101,7 @@ MDSDaemon::MDSDaemon(boost::string_view n, Messenger *m, MonClient *mc) :
   monc->set_messenger(messenger);
 
   mdsmap = new MDSMap;
+
 }
 
 MDSDaemon::~MDSDaemon() {
