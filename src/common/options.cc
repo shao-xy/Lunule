@@ -6044,7 +6044,7 @@ std::vector<Option> get_mds_options() {
     .set_default(true)
     .set_description(""),
 
-    ption("mds_migrator_fim", Option::TYPE_BOOL, Option::LEVEL_ADVANCED)
+    Option("mds_migrator_fim", Option::TYPE_BOOL, Option::LEVEL_ADVANCED)
     .set_default(false)
     .set_description("faster ipc-based migrator"),
 
