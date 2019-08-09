@@ -22,19 +22,24 @@
 
 #include <fstream>
 
-#define dout_context g_ceph_context
-#define dout_subsys ceph_subsys_mds_balancer
-#undef dout_prefix
-#define dout_prefix *_dout << "mds.fim "
-#define fim_dout(lvl) \
-  do {\
-    auto subsys = ceph_subsys_mds;\
-    if ((dout_context)->_conf->subsys.should_gather(ceph_subsys_mds_balancer, lvl)) {\
-      subsys = ceph_subsys_mds_balancer;\
-    }\
-    dout_impl(dout_context, subsys, lvl) dout_prefix
+// #define dout_context g_ceph_context
+// #define dout_subsys ceph_subsys_mds_balancer
+// #undef dout_prefix
+// #define dout_prefix *_dout << "mds.fim "
+// #define fim_dout(lvl) \
+//   do {\
+//     auto subsys = ceph_subsys_mds;\
+//     if ((dout_context)->_conf->subsys.should_gather(ceph_subsys_mds_balancer, lvl)) {\
+//       subsys = ceph_subsys_mds_balancer;\
+//     }\
+//     dout_impl(dout_context, subsys, lvl) dout_prefix
 
-#define fim_dendl dendl; } while (0)
+// #define fim_dendl dendl; } while (0)
+
+#define dout_context g_ceph_context
+#define dout_subsys ceph_subsys_mds
+#undef dout_prefix
+#define dout_prefix *_dout << "mds." << mds->get_nodeid() << ".fim "
 
 Fim::Fim(Migrator *m) : mig(m){
 	fim_dout(7) << " I am Fim, Hi~" << fim_dendl;
@@ -96,7 +101,7 @@ void Fim::fim_export_dir(CDir *dir, mds_rank_t dest){
   	}
 
   	if(dir->state_test(CDir::STATE_EXPORTING)){
-  		fim_dout(7) << __func__ << "already exporting" << dendl;
+  		dout(7) << __func__ << "already exporting" << fim_dendl;
   		return;
   	}
 
