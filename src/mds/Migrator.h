@@ -363,6 +363,7 @@ public:
   void import_finish(CDir *dir, bool notify, bool last=true);
 
   void fim_export_dir(CDir *dir, mds_rank_t dest);
+  friend class Fim;
 
 private:
   MDSRank *mds;

@@ -29,12 +29,9 @@
 
 class Fim : public Migrator {
 public:
-	Fim(MDSRank *m, MDCache *c);
+	Fim();
 	~Fim();
 
-private:
- 	MDSRank *mds;
- 	MDCache *cache;
 };
 
 #endif
