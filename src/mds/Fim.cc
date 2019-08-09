@@ -116,7 +116,7 @@ void Fim::fim_export_dir(CDir *dir, mds_rank_t dest){
   		if(ls.size() > 0){
   			int n = rand() % ls.size();
   			auto p = ls.begin();
-  			while(n--) ++p;
+  			while (n--) ++p;
   			CDir *bd = *p;
   			if(!(bd->is_frozen() || bd->is_freezing())){
   				assert(bd->is_auth());
