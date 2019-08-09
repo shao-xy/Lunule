@@ -35,7 +35,7 @@
 
 #define fim_dendl dendl; } while (0)
 
-Fim::Fim(){
+Fim::Fim(MDSRank *m, MDcache *c) : mds(m), cache(c){
 	fim_dout(0) << " I am Fim, Hi~" << fim_dendl;
 }
 

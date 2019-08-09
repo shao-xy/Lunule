@@ -25,12 +25,16 @@
 #include <string>
 
 #include "mdstypes.h"
+#include "Migrator.h"
 
-class Fim{
+class Fim : public Migrator {
 public:
-	Fim();
+	Fim(MDSRank *m, MDcache *c);
 	~Fim();
 
+private:
+ 	MDSRank *mds;
+ 	MDCache *cache;
 };
 
 #endif
