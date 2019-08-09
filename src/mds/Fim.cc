@@ -18,6 +18,7 @@
 #include "msg/Messenger.h"
 #include "common/Clock.h"
 #include "CInode.h"
+#include "Migrator.h"
 
 #include <fstream>
 
