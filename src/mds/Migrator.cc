@@ -797,7 +797,7 @@ public:
  * migrate dir to dest mds through fim(Faster IPC-based Migrator using unlocking COW method)
  */
 void Migrator::fim_export_dir(CDir *dir, mds_rank_t dest){
-  Fim *fim(this);
+  Fim *fim = new Fim(this);
   fim->fim_export_dir(dir, dest);
 }
 
