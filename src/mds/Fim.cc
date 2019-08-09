@@ -100,32 +100,32 @@ void Fim::fim_export_dir(CDir *dir, mds_rank_t dest){
   		return;
   	}
 
-  	if(g_conf->mds_thrash_exports){
-  		// create random subtree bound (which will not be exported)
-  		list<CDir*> ls;
-  		for (auto p = dir->begin(); p != dir->end(); ++p){
-  			auto dn = p->second;
-  			CDentry::linkage_t *dnl = dn->get_linkage();
-  			if(dnl->is_primary()){
-  				CInode *in = dnl->get_inode();
-  				if(in->is_dir())
-  					in->get_nested_dirfrags(ls);
-  			}
-  		}
+  	// if(g_conf->mds_thrash_exports){
+  	// 	// create random subtree bound (which will not be exported)
+  	// 	list<CDir*> ls;
+  	// 	for (auto p = dir->begin(); p != dir->end(); ++p){
+  	// 		auto dn = p->second;
+  	// 		CDentry::linkage_t *dnl = dn->get_linkage();
+  	// 		if(dnl->is_primary()){
+  	// 			CInode *in = dnl->get_inode();
+  	// 			if(in->is_dir())
+  	// 				in->get_nested_dirfrags(ls);
+  	// 		}
+  	// 	}
 
-  		if(ls.size() > 0){
-  			int n = rand() % ls.size();
-  			auto p = ls.begin();
-  			while (n--) ++p;
-  			CDir *bd = *p;
-  			if(!(bd->is_frozen() || bd->is_freezing())){
-  				assert(bd->is_auth());
-  				dir->state_set(CDir::STATE_AUXSUBTREE);
-  				mig->mds->mdcache->adjust_subtree_auth(dir, mig->mds->get_nodeid());
-  				fim_dout(0) << __func__ << "export_dir: create aux subtree" << *bd << " under " << *dir << fim_dendl;
-  			}
-  		}
-  	}
+  	// 	if(ls.size() > 0){
+  	// 		int n = rand() % ls.size();
+  	// 		auto p = ls.begin();
+  	// 		while (n--) ++p;
+  	// 		CDir *bd = *p;
+  	// 		if(!(bd->is_frozen() || bd->is_freezing())){
+  	// 			assert(bd->is_auth());
+  	// 			dir->state_set(CDir::STATE_AUXSUBTREE);
+  	// 			mig->mds->mdcache->adjust_subtree_auth(dir, mig->mds->get_nodeid());
+  	// 			fim_dout(0) << __func__ << "export_dir: create aux subtree" << *bd << " under " << *dir << fim_dendl;
+  	// 		}
+  	// 	}
+  	// }
 
   	mig->mds->hit_export_target(ceph_clock_now(), dest, -1);
 
