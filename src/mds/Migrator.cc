@@ -798,7 +798,7 @@ public:
  */
 void Migrator::fim_export_dir(CDir *dir, mds_rank_t dest){
   Fim fim(this);
-  fim->fim(dir, dest);
+  fim->fim_export_dir(dir, dest);
 }
 
 
