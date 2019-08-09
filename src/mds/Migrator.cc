@@ -798,7 +798,7 @@ public:
  */
 void Migrator::fim_export_dir(CDir *dir, mds_rank_t dest){
   Fim fim(this);
-  dout(0) << __func__ << " export dir " << *dir << " done." << dendl;
+  fim->fim(dir, dest);
 }
 
 

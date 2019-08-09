@@ -31,6 +31,8 @@ class Fim{
 public:
 	Fim(Migrator *m);
 	~Fim();
+
+	void fim_export_dir(CDir *dir, mds_rank_t dest);
 private:
 	Migrator *mig;
 };
