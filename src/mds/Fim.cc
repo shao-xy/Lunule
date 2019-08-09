@@ -137,7 +137,7 @@ void Fim::fim_export_dir(CDir *dir, mds_rank_t dest){
 
   	assert(mig->export_state.count(dir) == 0);
   	Migrator::export_state_t& stat = mig->export_state[dir];
-  	stat.state = EXPORT_LOCKING;
+  	stat.state = Migrator::EXPORT_LOCKING;
   	stat.peer = dest;
   	stat.tid = mdr->reqid.tid;
   	stat.mut = mdr;
