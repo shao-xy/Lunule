@@ -27,11 +27,12 @@
 #include "mdstypes.h"
 #include "Migrator.h"
 
-class Fim : public Migrator {
+class Fim{
 public:
-	Fim();
+	Fim(Migrator *m);
 	~Fim();
-
+private:
+	Migrator *mig;
 };
 
 #endif

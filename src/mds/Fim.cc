@@ -35,7 +35,7 @@
 
 #define fim_dendl dendl; } while (0)
 
-Fim::Fim(){
+Fim::Fim(Migrator *m) : mig(m){
 	fim_dout(0) << " I am Fim, Hi~" << fim_dendl;
 }
 
