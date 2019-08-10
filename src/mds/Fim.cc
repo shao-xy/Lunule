@@ -234,7 +234,7 @@ void Fim::fim_export_dir(CDir *dir, mds_rank_t dest){
 
   	assert(mig->export_state.count(dir) == 0);
   	Migrator::export_state_t& stat = mig->export_state[dir];
-  	stat.state = Migrator::EXPORT_LOCKING;
+  	stat.state = EXPORT_LOCKING;
   	stat.peer = dest;
   	stat.tid = mdr->reqid.tid;
   	stat.mut = mdr;
@@ -257,7 +257,7 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 		return;
 	}
 
-	assert(it->second.state == Migrator::EXPORT_LOCKING);
+	assert(it->second.state == EXPORT_LOCKING);
 	mds_rank_t dest = it->second.peer;
 	if(!mig->mds->is_export_target(dest)){
 		fim_dout(7) << __func__ << "dest is not yet an export target" << fim_dendl;
@@ -305,7 +305,7 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 
 	// discovering step
 	assert(g_conf->mds_kill_export_at != 1);
-	it->second.state = Migrator::EXPORT_DISCOVERING;
+	it->second.state = EXPORT_DISCOVERING;
 
 	filepath path;
 	dir->inode->make_path(path);
@@ -332,7 +332,7 @@ void Fim::fim_handle_export_discover(MExportDirDiscover *m){
 
 	dirfrag_t df = m->get_dirfrag();
 
-	if(!mds->is_active()){
+	if(!mig->mds->is_active()){
 		fim_dout(7) << __func__ << "mds is not active, send NACK" << fim_dendl;
 		mig->mds->send_message_mds(new MExportDirDiscoverAck(df, m->get_tid(), false), from);
 		m->put();
@@ -373,7 +373,7 @@ void Fim::fim_handle_export_discover(MExportDirDiscover *m){
 	if(!in){
 		// must discover it
 		filepath fpath(m->get_path());
-		vecor<CDentry*> trace;
+		vector<CDentry*> trace;
 		MDRequestRef null_ref;
 		int r = mig->cache->path_traverse(null_ref, m, NULL, fpath, &trace, NULL, MDS_TRAVERSE_DISCOVER);
 		if(r > 0) return;
@@ -386,9 +386,9 @@ void Fim::fim_handle_export_discover(MExportDirDiscover *m){
 	}
 
 	// yay
-	fim_dout(7) << __func__ << "have " << *df << " inode " << *in << fim_dendl;
+	fim_dout(7) << __func__ << "have " << df << " inode " << *in << fim_dendl;
 
-	p_state.state = Migrator::IMPORT_DISCOVERED;
+	p_state->state = IMPORT_DISCOVERED;
 
 	// pin inode in the cache for now
 	assert(in->is_dir());

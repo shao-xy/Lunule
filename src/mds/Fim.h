@@ -53,6 +53,55 @@ class Migrator;
 
 class Fim{
 public:
+	// export stages.  used to clean up intelligently if there's a failure.
+	const static int EXPORT_CANCELLED	= 0;  // cancelled
+	const static int EXPORT_CANCELLING	= 1;  // waiting for cancel notifyacks
+	const static int EXPORT_LOCKING	= 2;  // acquiring locks
+	const static int EXPORT_DISCOVERING	= 3;  // dest is disovering export dir
+	const static int EXPORT_FREEZING	= 4;  // we're freezing the dir tree
+	const static int EXPORT_PREPPING	= 5;  // sending dest spanning tree to export bounds
+	const static int EXPORT_WARNING	= 6;  // warning bystanders of dir_auth_pending
+	const static int EXPORT_EXPORTING	= 7;  // sent actual export, waiting for ack
+	const static int EXPORT_LOGGINGFINISH	= 8;  // logging EExportFinish
+	const static int EXPORT_NOTIFYING	= 9;  // waiting for notifyacks
+	static const char *get_export_statename(int s) {
+		switch (s) {
+		case EXPORT_CANCELLING: return "cancelling";
+		case EXPORT_LOCKING: return "locking";
+		case EXPORT_DISCOVERING: return "discovering";
+		case EXPORT_FREEZING: return "freezing";
+		case EXPORT_PREPPING: return "prepping";
+		case EXPORT_WARNING: return "warning";
+		case EXPORT_EXPORTING: return "exporting";
+		case EXPORT_LOGGINGFINISH: return "loggingfinish";
+		case EXPORT_NOTIFYING: return "notifying";
+		default: ceph_abort(); return 0;
+		}
+	}
+
+	// -- imports --
+	const static int IMPORT_DISCOVERING   = 1; // waiting for prep
+	const static int IMPORT_DISCOVERED    = 2; // waiting for prep
+	const static int IMPORT_PREPPING      = 3; // opening dirs on bounds
+	const static int IMPORT_PREPPED       = 4; // opened bounds, waiting for import
+	const static int IMPORT_LOGGINGSTART  = 5; // got import, logging EImportStart
+	const static int IMPORT_ACKING        = 6; // logged EImportStart, sent ack, waiting for finish
+	const static int IMPORT_FINISHING     = 7; // sent cap imports, waiting for finish
+	const static int IMPORT_ABORTING      = 8; // notifying bystanders of an abort before unfreezing
+	static const char *get_import_statename(int s) {
+		switch (s) {
+		case IMPORT_DISCOVERING: return "discovering";
+		case IMPORT_DISCOVERED: return "discovered";
+		case IMPORT_PREPPING: return "prepping";
+		case IMPORT_PREPPED: return "prepped";
+		case IMPORT_LOGGINGSTART: return "loggingstart";
+		case IMPORT_ACKING: return "acking";
+		case IMPORT_FINISHING: return "finishing";
+		case IMPORT_ABORTING: return "aborting";
+		default: ceph_abort(); return 0;
+		}
+	}
+	// ---- cons ----
 	Fim(Migrator *m);
 	~Fim();
 
