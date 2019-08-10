@@ -679,6 +679,7 @@ public:
   friend class Locker;
   friend class Migrator;
   friend class MDBalancer;
+  friend class Fim;
 
   // StrayManager needs to be able to remove_inode() from us
   // when it is done purging

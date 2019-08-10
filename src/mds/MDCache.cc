@@ -28,6 +28,7 @@
 #include "MDBalancer.h"
 #include "Migrator.h"
 #include "ScrubStack.h"
+#include "Fim.h"
 
 #include "SnapClient.h"
 
