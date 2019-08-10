@@ -60,6 +60,7 @@ public:
 
 	void fim_export_dir(CDir *dir, mds_rank_t dest);
 	void fim_dispatch_export_dir(MDRequestRef& mdr, int count);
+	void fim_export_frozen(CDir *dir, uint64_t tid);
 private:
 	Migrator *mig;
 };

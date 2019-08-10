@@ -224,3 +224,7 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 	assert(dir->is_freezing_tree());
 	dir->add_waiter(CDir::WAIT_FROZEN, new C_MDC_ExportFreeze(mig, dir, it->second.tid));
 }
+
+void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
+	fim_dout(7) << __func__ << *dir << fim_dendl;
+}

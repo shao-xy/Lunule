@@ -739,10 +739,15 @@ public:
           assert(ex != NULL);
         }
   void finish(int r) override {
-    if (r >= 0)
-      mig->export_frozen(ex, tid);
+    if (r >= 0){
+      if(g_conf->mds_migrator_fim == true)
+        mig->fim_export_frozen(ex, tid);
+      else
+        mig->export_frozen(ex, tid);
+    }
   }
 };
+
 
 
 void Migrator::get_export_lock_set(CDir *dir, set<SimpleLock*>& locks)
@@ -790,9 +795,7 @@ public:
    : MigratorContext(m), mdr(mdr), count(count) {}
   void finish(int r) override {
     if(g_conf->mds_migrator_fim == true){
-      Fim *fim = new Fim(this);
-      fim->dispatch_export_dir(mdr, count);
-    }
+      mig->fim_dispatch_export_dir(mdr, count);
     else
       mig->dispatch_export_dir(mdr, count);
   }
@@ -904,6 +907,11 @@ void Migrator::export_dir(CDir *dir, mds_rank_t dest)
   stat.mut = mdr;
  
   return mds->mdcache->dispatch_request(mdr);
+}
+
+void Migrator::fim_dispatch_export_dir(MDRequestRef *mdr, int count){
+  Fim *fim = new Fim(this);
+  fim->fim_dispatch_export_dir(mdr, count);
 }
 
 void Migrator::dispatch_export_dir(MDRequestRef& mdr, int count)
@@ -1098,6 +1106,11 @@ void Migrator::export_sessions_flushed(CDir *dir, uint64_t tid)
   it->second.warning_ack_waiting.erase(MDS_RANK_NONE);
   if (it->second.state == EXPORT_WARNING && it->second.warning_ack_waiting.empty())
     export_go(dir);     // start export.
+}
+
+void fim_export_frozen(CDir *dir, uint64_t tid){
+  Fim *fim = new Fim(this);
+  fim->fim_export_frozen(dir, tid);
 }
 
 void Migrator::export_frozen(CDir *dir, uint64_t tid)
