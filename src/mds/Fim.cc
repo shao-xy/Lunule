@@ -132,6 +132,19 @@ public:
   }
 };
 
+class C_M_ExportSessionsFlushed : public MigratorContext {
+  CDir *dir;
+  uint64_t tid;
+public:
+  C_M_ExportSessionsFlushed(Migrator *m, CDir *d, uint64_t t)
+   : MigratorContext(m), dir(d), tid(t) {
+    assert(dir != NULL);
+  }
+  void finish(int r) override {
+    mig->export_sessions_flushed(dir, tid);
+  }
+};
+
 // ----  Fim ----
 Fim::Fim(Migrator *m) : mig(m){
 	fim_dout(7) << " I am Fim, Hi~" << fim_dendl;
@@ -309,6 +322,7 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 
 	filepath path;
 	dir->inode->make_path(path);
+	fim_dout(7) << __func__ << "Flow:[1] send Discover message" << fim_dendl;
 	MExportDirDiscover *discover = new MExportDirDiscover(dir->dirfrag(), path, mig->mds->get_nodeid(), it->second.tid);
 	mig->mds->send_message_mds(discover, dest);
 
@@ -328,7 +342,7 @@ void Fim::fim_handle_export_discover(MExportDirDiscover *m){
 	mds_rank_t from = m->get_source_mds();
 	assert(from != mig->mds->get_nodeid());
 
-	fim_dout(7) << __func__ << "recv discover message on " << m->get_path() << fim_dendl;
+	fim_dout(7) << __func__ << "Flow:[2] recv Discover message on " << m->get_path() << fim_dendl;
 
 	dirfrag_t df = m->get_dirfrag();
 
@@ -395,7 +409,7 @@ void Fim::fim_handle_export_discover(MExportDirDiscover *m){
 	in->get(CInode::PIN_IMPORTING);
 
 	// reply
-	fim_dout(7) << __func__ << "send export_discover_ack on " << *in << fim_dendl;
+	fim_dout(7) << __func__ << "Flow:[3] send DiscoverACK message" << fim_dendl;
 	mig->mds->send_message_mds(new MExportDirDiscoverAck(df, m->get_tid()), p_state->peer);
 	m->put();
 	assert(g_conf->mds_kill_import_at != 2); 
@@ -408,7 +422,7 @@ void Fim::fim_handle_export_discover_ack(MExportDirDiscoverAck *m){
 	utime_t now = ceph_clock_now();
 	assert(dir);
 
-	fim_dout(7) << __func__ << "recv MExportDirDiscoverAck from " << m->get_source() << " on " << *dir << fim_dendl;
+	fim_dout(7) << __func__ << "Flow:[4] recv DirDiscoverAck from " << m->get_source() << " on " << *dir << fim_dendl;
 	mig->mds->hit_export_target(now, dest, -1);
 
 	map<CDir*, Migrator::export_state_t>::iterator it = mig->export_state.find(dir);
@@ -441,5 +455,157 @@ void Fim::fim_handle_export_discover_ack(MExportDirDiscoverAck *m){
 
 
 void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
-	fim_dout(7) << __func__ << *dir << fim_dendl;
+	fim_dout(7) << __func__ << " on " << *dir << fim_dendl;
+	map<CDir*,Migrator::export_state_t>::iterator it = mig->export_state.find(dir);
+	if (it == mig->export_state.end() || it->second.tid != tid) {
+		dout(7) << "export must have aborted" << dendl;
+		return;
+	}
+
+	assert(it->second.state == EXPORT_FREEZING);
+	assert(dir->is_frozen_tree_root());
+	assert(dir->get_cum_auth_pins() == 0);
+
+	CInode *diri = dir->get_inode();
+
+	// ok, try to grab all my locks.
+	set<SimpleLock*> rdlocks;
+	mig->get_export_lock_set(dir, rdlocks);
+	if ((diri->is_auth() && diri->is_frozen()) || !mig->mds->locker->can_rdlock_set(rdlocks) || !diri->filelock.can_wrlock(-1) || !diri->nestlock.can_wrlock(-1)) {
+		fim_dout(7) << "export_dir couldn't acquire all needed locks, failing. " << *dir << fim_dendl;
+		// .. unwind ..
+		dir->unfreeze_tree();
+		mig->cache->try_subtree_merge(dir);
+
+		mig->mds->send_message_mds(new MExportDirCancel(dir->dirfrag(), it->second.tid), it->second.peer);
+		mig->export_state.erase(it);
+
+		dir->state_clear(CDir::STATE_EXPORTING);
+		mig->cache->maybe_send_pending_resolves();
+		return;
+	}
+
+	it->second.mut = new MutationImpl();
+	if (diri->is_auth())
+		it->second.mut->auth_pin(diri);
+	mig->mds->locker->rdlock_take_set(rdlocks, it->second.mut);
+	mig->mds->locker->wrlock_force(&diri->filelock, it->second.mut);
+	mig->mds->locker->wrlock_force(&diri->nestlock, it->second.mut);
+
+	// can ignore and bypass
+	mig->cache->show_subtrees();
+
+	// CDir::_freeze_tree() should have forced it into subtree.
+ 	assert(dir->get_dir_auth() == mds_authority_t(mig->mds->get_nodeid(), mig->mds->get_nodeid()));
+
+ 	set<client_t> export_client_set;
+ 	mig->check_export_size(dir, it->second, export_client_set);
+
+ 	// note the bounds
+ 	set<CDir*> bounds;
+ 	mig->cache->get_subtree_bound(dir, bounds);
+
+ 	// generate the prepare message and log the entry
+ 	MExportDirPrep *prep = new MExportDirPrep(dir->dirfrag(), it->second.tid);
+
+ 	// include list of bystanders
+ 	for(const auto &p : dir->get_replicas()){
+ 		if(p.first != it->second.peer){
+ 			fim_dou(7) << __func__ << "bystander mds." << p.first << fim_dendl;
+ 			prep->add_bystander(p.first);
+ 		}
+ 	}
+
+ 	// include base dirfrag
+ 	mig->cache->replicate_dir(dir, it->second.peer, prep->basedir);
+
+	/*
+	* include spanning tree for all nested exports.
+	* these need to be on the destination _before_ the final export so that
+	* dir_auth updates on any nested exports are properly absorbed.
+	* this includes inodes and dirfrags included in the subtree, but
+	* only the inodes at the bounds.
+	*
+	* each trace is: df ('-' | ('f' dir | 'd') dentry inode (dir dentry inode)*)
+	*/
+	set<inodeno_t> inodes_added;
+	set<dirfrag_t> dirfrags_added;
+	// check bounds
+	for(set<CDir*>::iterator p = bounds.begin(); p != bounds.end(); ++p){
+		CDir *bound = *p;
+
+		// pin it
+		assert(bound->state_test(CDir::STATE_EXPORTBOUND));
+
+		fim_dout(7) << __func__ << "export bound " << *bound << fim_dendl;
+		prep->add_bound(bound->dirfrag());
+
+		// trace to bound
+		bufferlist tracebl;
+		CDir *cur = bound;
+
+		char start = '-';
+		if(it->second.residual_dirs.count(bound)){
+			start = 'f';
+			mig->cache->replicate_dir(bound, it->second.peer, tracebl);
+			fim_dout(7) << __func__ << "add " << *bound << fim_dendl;
+		}
+
+		while(1){
+			// don't repeat inodes
+			if(inodes_added.count(cur->inode->ino()))
+				break;
+			inodes_added.insert(cur->inode->ino());
+
+			// prepend dentry + inode
+			assert(cur->inode->is_auth());
+			bufferlist bl;
+			mig->cache->replicate_dentry(cur->inode->parent, it->second.peer, bl);
+			fim_dout(7) << __func__ << "added " << *cur->inode->parent << fim_dendl;
+			mig->cache->replicate_inode(cur->inode, it->second.peer, bl, mig->mds->mdsmap->get_up_features());
+			fim_dout(7) << __func__ << "added " << *cur->inode << fim_dendl;
+			bl.claim_append(tracebl);
+			tracebl.claim(bl);
+
+			cur = cur->get_parent_dir();
+
+			// don't repeat dirfrag
+			if(dirfrags_added.count(cur->dirfrag()) || cur == dir ){
+				start = 'd';
+				break;
+			}
+			dirfrags_added.insert(cur->dirfrag());
+
+			// prepend dir
+			mig->cache->replicate_dir(cur, it->second.peer, bl);
+			fim_dout(7) << __func__ << "added " << *cur << fim_dendl;
+
+			bl.claim_append(tracebl);
+			tracebl.claim(bl);
+			start = 'f';
+		}
+		bufferlist final_bl;
+		dirfrag_t df = cur->dirfrag();
+		::encode(df, final_bl);
+		::encode(start, final_bl);
+		final_bl.claim_append(tracebl);
+		prep->add_trace(final_bl);
+	}
+
+	// send
+	it->second.state = EXPORT_PREPING;
+	fim_dout(7) << __func__ << "Flow:[5] send prepare message" << fim_dendl;
+	mig->mds->send_message_mds(prep, it->second.peer);
+	assert(g_conf->mds_kill_export_at != 4);
+
+	// make sure any new instantiations of caps are flushed out
+	assert(it->second.warning_ack_waiting.empty());
+
+	MDSGatherBuilder gather(g_ceph_context);
+	mig->mds->server->flush_client_sessions(export_client_set, gather);
+	if (gather.has_subs()) {
+		it->second.warning_ack_waiting.insert(MDS_RANK_NONE);
+		gather.set_finisher(new C_M_ExportSessionsFlushed(mig, dir, it->second.tid));
+		gather.activate();
+	}
 }

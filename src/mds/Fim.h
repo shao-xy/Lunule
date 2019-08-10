@@ -109,7 +109,7 @@ public:
 	friend class C_MDC_ExportFreeze;
 	// friend class C_MDS_ExportFinishLogged;
 	// friend class C_M_ExportGo;
-	// friend class C_M_ExportSessionsFlushed;
+	friend class C_M_ExportSessionsFlushed;
 	friend class MigratorContext;
 	friend class MigratorLogContext;
 
