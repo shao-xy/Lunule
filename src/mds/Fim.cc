@@ -142,5 +142,6 @@ void Fim::fim_export_dir(CDir *dir, mds_rank_t dest){
   	stat.tid = mdr->reqid.tid;
   	stat.mut = mdr;
 
-  	return mig->mds->mdcache->dispatch_request(mdr);
+  	// return mig->mds->mdcache->dispatch_request(mdr);
+  	mig->dispatch_export_dir(mdr, 0)
 }
