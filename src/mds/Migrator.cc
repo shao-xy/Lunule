@@ -112,7 +112,10 @@ void Migrator::dispatch(Message *m)
   switch (m->get_type()) {
     // import
   case MSG_MDS_EXPORTDIRDISCOVER:
-    handle_export_discover(static_cast<MExportDirDiscover*>(m));
+    if(g_conf->mds_migrator_fim == true)
+      fim_handle_export_discover(static_cast<MExportDirDiscover*>(m));
+    else
+      handle_export_discover(static_cast<MExportDirDiscover*>(m));
     break;
   case MSG_MDS_EXPORTDIRPREP:
     handle_export_prep(static_cast<MExportDirPrep*>(m));
@@ -129,7 +132,10 @@ void Migrator::dispatch(Message *m)
 
     // export 
   case MSG_MDS_EXPORTDIRDISCOVERACK:
-    handle_export_discover_ack(static_cast<MExportDirDiscoverAck*>(m));
+    if(g_conf->mds_migrator_fim == true)
+      fim_handle_export_discover_ack(static_cast<MExportDirDiscoverAck*>(m));
+    else
+      handle_export_discover_ack(static_cast<MExportDirDiscoverAck*>(m));
     break;
   case MSG_MDS_EXPORTDIRPREPACK:
     handle_export_prep_ack(static_cast<MExportDirPrepAck*>(m));
@@ -719,7 +725,7 @@ void Migrator::maybe_do_queued_export()
     dout(6) << " MDS_MONITOR_MIGRATOR " << __func__ << " Export_dir START on DIR " << *dir << " at " << export_record_start[dir] << dendl;
     #endif
 
-    if(g_conf->get_val<bool>("mds_migrator_fim") == true)
+    if(g_conf->mds_migrator_fim == true)
       fim_export_dir(dir, dest);
     else
       export_dir(dir, dest);
@@ -740,7 +746,7 @@ public:
         }
   void finish(int r) override {
     if (r >= 0){
-      if(g_conf->get_val<bool>("mds_migrator_fim") == true)
+      if(g_conf->mds_migrator_fim == true)
         mig->fim_export_frozen(ex, tid);
       else
         mig->export_frozen(ex, tid);
@@ -794,7 +800,7 @@ public:
   C_M_ExportDirWait(Migrator *m, MDRequestRef mdr, int count)
    : MigratorContext(m), mdr(mdr), count(count) {}
   void finish(int r) override {
-    if(g_conf->get_val<bool>("mds_migrator_fim") == true)
+    if(g_conf->mds_migrator_fim == true)
       mig->fim_dispatch_export_dir(mdr, count);
     else
       mig->dispatch_export_dir(mdr, count);
@@ -1018,6 +1024,10 @@ void Migrator::dispatch_export_dir(MDRequestRef& mdr, int count)
   dir->add_waiter(CDir::WAIT_FROZEN, new C_MDC_ExportFreeze(this, dir, it->second.tid));
 }
 
+void Migrator::fim_handle_export_discover_ack(MExportDirDiscoverAck *m){
+  Fim *fim = new Fim(this);
+  fim->fim_handle_export_discover_ack(m);
+}
 /*
  * called on receipt of MExportDirDiscoverAck
  * the importer now has the directory's _inode_ in memory, and pinned.
@@ -2407,6 +2417,12 @@ void Migrator::export_finish(CDir *dir)
 // ==========================================================
 // IMPORT
 
+void Migrator::fim_handle_export_discover(MExportDirDiscover *m){
+  Fim *fim = new Fim(this);
+  fim->fim_handle_export_discover(m);
+}
+
+
 void Migrator::handle_export_discover(MExportDirDiscover *m)
 {
   mds_rank_t from = m->get_source_mds();
@@ -2501,7 +2517,7 @@ void Migrator::handle_export_discover(MExportDirDiscover *m)
   #endif
   mds->send_message_mds(new MExportDirDiscoverAck(df, m->get_tid()), p_state->peer);
   m->put();
-  assert (g_conf->mds_kill_import_at != 2);  
+  assert(g_conf->mds_kill_import_at != 2);  
 }
 
 void Migrator::import_reverse_discovering(dirfrag_t df)

@@ -193,6 +193,9 @@ protected:
   void handle_export_prep(MExportDirPrep *m);
   void handle_export_dir(MExportDir *m);
 
+  void fim_handle_export_discover(MExportDirDiscover *m);
+  void fim_handle_export_discover_ack(MExportDirDiscoverAck *m);
+
   void import_reverse_discovering(dirfrag_t df);
   void import_reverse_discovered(dirfrag_t df, CInode *diri);
   void import_reverse_prepping(CDir *dir, import_state_t& stat);

@@ -72,6 +72,9 @@ public:
 	void fim_dispatch_export_dir(MDRequestRef& mdr, int count);
 	void fim_export_frozen(CDir *dir, uint64_t tid);
 
+	void fim_handle_export_discover(MExportDirDiscover *m);
+	void fim_handle_export_discover_ack(MExportDirDiscoverAck *m);
+
 private:
 	Migrator *mig;
 };

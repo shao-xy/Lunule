@@ -107,7 +107,7 @@ public:
   C_M_ExportDirWait(Migrator *m, MDRequestRef mdr, int count)
    : MigratorContext(m), mdr(mdr), count(count) {}
   void finish(int r) override {
-    if(g_conf->get_val<bool>("mds_migrator_fim") == true)
+    if(g_conf->mds_migrator_fim == true)
       mig->fim_dispatch_export_dir(mdr, count);
     else
       mig->dispatch_export_dir(mdr, count);
@@ -124,7 +124,7 @@ public:
         }
   void finish(int r) override {
     if (r >= 0){
-      if(g_conf->get_val<bool>("mds_migrator_fim") == true)
+      if(g_conf->mds_migrator_fim == true)
         mig->fim_export_frozen(ex, tid);
       else
         mig->export_frozen(ex, tid);
@@ -321,6 +321,90 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 	assert(dir->is_freezing_tree());
 	dir->add_waiter(CDir::WAIT_FROZEN, new C_MDC_ExportFreeze(mig, dir, it->second.tid));
 }
+
+void Fim::fim_handle_export_discover(MExportDirDiscover *m){
+	fim_dout(7) << __func__ << fim_dendl;
+
+	mds_rank_t from = m->get_source_mds();
+	assert(from != mig->mds->get_nodeid());
+
+	fim_dendl(7) << __func__ << "recv discover message on " << m->get_path() << fim_dendl;
+
+	dirfrag_t df = m->get_dirfrag();
+
+	if(!mds->is_active()){
+		fim_dout(7) << __func__ << "mds is not active, send NACK" << fim_dendl;
+		mig->mds->send_message_mds(new MExportDirDiscoverAck(df, m->get_tid(), false), from);
+		m->put();
+		return;
+	}
+
+	Migrator::import_state_t *p_state;
+	map<dirfrag_t, Migrator::import_state_t>::iterator it = mig->import_state.find(df);
+	if(!m->started){
+		assert(it == mig->import_state.end());
+		m->started = true;
+		p_state = &(mig->import_state[df]);
+		p_state->state = IMPORT_DISCOVERING;
+		p_state->peer = from;
+		p_state->tid = m->get_tid();
+	}
+	else{
+		// am i retrying after ancient path_traverse results?
+		if(it == mig->import_state.end() || it->second.peer != from || it->second.tid != m->get_tid()){
+			fim_dout(7) << __func__ << "dropping obsolete message" << fim_dendl;
+			m->put();
+			return;
+		}
+		assert(it->second.state != IMPORT_DISCOVERING);
+		p_state = &it->second;
+	}
+
+	if(!mig->mds->mdcache->is_open()){
+		fim_dout(7) << __func__ << "waiting for root" << fim_dendl;
+		mig->mds->mdcache->wait_for_open(new C_MDS_RetryMessage(mig->mds, m));
+		return;
+	}
+
+	assert(g_conf->mds_kill_import_at != 1);
+
+	// do we have it?
+	CInode *in = mig->cache->get_inode(m->get_dirfrag().ino);
+	if(!in){
+		// must discover it
+		filepath fpath(m->get_path());
+		vecor<CDentry*> trace;
+		MDRequestRef null_ref;
+		int r = mig->cache->path_traverse(null_ref, m, NULL, fpath, &trace, NULL, MDS_TRAVERSE_DISCOVER);
+		if(r > 0) return;
+		if(r < 0){
+			fim_dout(7) << __func__ << "failed to discover or not dir" << m->get_path() << fim_dendl;
+			ceph_abort(); // this shouldn't happen if the auth pins its path properly!!!!
+		}
+
+		ceph_abort(); // this shouldn't happen; the get_inode above would have succeeded.
+	}
+
+	// yay
+	fim_dout(7) << __func__ << "have " << *df << " inode " << *in << fim_dendl;
+
+	p_state.state = Migrator::IMPORT_DISCOVERED;
+
+	// pin inode in the cache for now
+	assert(in->is_dir());
+	in->get(CInode::PIN_IMPORTING);
+
+	// reply
+	fim_dout(7) << __func__ << "send export_discover_ack on " << *in << fim_dendl;
+	mig->mds->send_message_mds(new MExportDirDiscoverAck(df, m->get_tid()), p_state->peer);
+	m->put();
+	assert(g_conf->mds_kill_import_at != 2); 
+}
+
+void Fim::fim_handle_export_discover_ack(MExportDirDiscoverAck *m){
+	fim_dou(7) << __func__ << "recv MExportDirDiscoverAck" << fim_dendl;
+}
+
 
 void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
 	fim_dout(7) << __func__ << *dir << fim_dendl;
