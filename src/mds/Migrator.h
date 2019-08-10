@@ -51,7 +51,8 @@ class MGatherCaps;
 
 class EImportStart;
 
-
+class C_M_ExportDirWait;
+class C_MDC_ExportFreeze;
 
 class Migrator {
 public:
