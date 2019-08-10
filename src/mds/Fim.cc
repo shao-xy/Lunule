@@ -75,6 +75,64 @@
 
 #define fim_dendl dendl; } while (0)
 
+// -- cons --
+class MigratorContext : public MDSInternalContextBase {
+protected:
+  Migrator *mig;
+  MDSRank *get_mds() override {
+    return mig->mds;
+  }
+public:
+  explicit MigratorContext(Migrator *mig_) : mig(mig_) {
+    assert(mig != NULL);
+  }
+};
+
+class MigratorLogContext : public MDSLogContextBase {
+protected:
+  Migrator *mig;
+  MDSRank *get_mds() override {
+    return mig->mds;
+  }
+public:
+  explicit MigratorLogContext(Migrator *mig_) : mig(mig_) {
+    assert(mig != NULL);
+  }
+};
+
+class C_M_ExportDirWait : public MigratorContext {
+  MDRequestRef mdr;
+  int count;
+public:
+  C_M_ExportDirWait(Migrator *m, MDRequestRef mdr, int count)
+   : MigratorContext(m), mdr(mdr), count(count) {}
+  void finish(int r) override {
+    if(g_conf->get_val<bool>("mds_migrator_fim") == true)
+      mig->fim_dispatch_export_dir(mdr, count);
+    else
+      mig->dispatch_export_dir(mdr, count);
+  }
+};
+
+class C_MDC_ExportFreeze : public MigratorContext {
+  CDir *ex;   // dir i'm exporting
+  uint64_t tid;
+public:
+  C_MDC_ExportFreeze(Migrator *m, CDir *e, uint64_t t) :
+	MigratorContext(m), ex(e), tid(t) {
+          assert(ex != NULL);
+        }
+  void finish(int r) override {
+    if (r >= 0){
+      if(g_conf->get_val<bool>("mds_migrator_fim") == true)
+        mig->fim_export_frozen(ex, tid);
+      else
+        mig->export_frozen(ex, tid);
+    }
+  }
+};
+
+// ----  Fim ----
 Fim::Fim(Migrator *m) : mig(m){
 	fim_dout(7) << " I am Fim, Hi~" << fim_dendl;
 }

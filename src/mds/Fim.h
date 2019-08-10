@@ -51,22 +51,22 @@ class EImportStart;
 
 class Migrator;
 
-class C_M_ExportDirWait;
-class C_MDC_ExportFreeze;
-class C_MDS_ExportFinishLogged;
-class C_M_ExportGo;
-class C_M_ExportSessionsFlushed;
-class MigratorContext;
-class MigratorLogContext;
-
-class C_MDS_ImportDirLoggedStart;
-class C_MDS_ImportDirLoggedFinish;
-class C_M_LoggedImportCaps;
-
 class Fim{
 public:
 	Fim(Migrator *m);
 	~Fim();
+
+	friend class C_M_ExportDirWait;
+	friend class C_MDC_ExportFreeze;
+	// friend class C_MDS_ExportFinishLogged;
+	// friend class C_M_ExportGo;
+	// friend class C_M_ExportSessionsFlushed;
+	friend class MigratorContext;
+	friend class MigratorLogContext;
+
+	// friend class C_MDS_ImportDirLoggedStart;
+	// friend class C_MDS_ImportDirLoggedFinish;
+	// friend class C_M_LoggedImportCaps;
 
 	void fim_export_dir(CDir *dir, mds_rank_t dest);
 	void fim_dispatch_export_dir(MDRequestRef& mdr, int count);
