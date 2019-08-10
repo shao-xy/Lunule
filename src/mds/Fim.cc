@@ -328,7 +328,7 @@ void Fim::fim_handle_export_discover(MExportDirDiscover *m){
 	mds_rank_t from = m->get_source_mds();
 	assert(from != mig->mds->get_nodeid());
 
-	fim_dendl(7) << __func__ << "recv discover message on " << m->get_path() << fim_dendl;
+	fim_dout(7) << __func__ << "recv discover message on " << m->get_path() << fim_dendl;
 
 	dirfrag_t df = m->get_dirfrag();
 
@@ -402,7 +402,7 @@ void Fim::fim_handle_export_discover(MExportDirDiscover *m){
 }
 
 void Fim::fim_handle_export_discover_ack(MExportDirDiscoverAck *m){
-	fim_dou(7) << __func__ << "recv MExportDirDiscoverAck" << fim_dendl;
+	fim_dout(7) << __func__ << "recv MExportDirDiscoverAck" << fim_dendl;
 }
 
 
