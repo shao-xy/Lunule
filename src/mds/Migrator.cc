@@ -721,8 +721,8 @@ void Migrator::maybe_do_queued_export()
 
     if(g_conf->get_val<bool>("mds_migrator_fim") == true)
       fim_export_dir(dir, dest);
-  
-    export_dir(dir, dest);
+    else
+      export_dir(dir, dest);
   }
   running = false;
 }
