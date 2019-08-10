@@ -402,7 +402,41 @@ void Fim::fim_handle_export_discover(MExportDirDiscover *m){
 }
 
 void Fim::fim_handle_export_discover_ack(MExportDirDiscoverAck *m){
-	fim_dout(7) << __func__ << "recv MExportDirDiscoverAck" << fim_dendl;
+	fim_dout(7) << __func__ << fim_dendl;
+	CDir *dir = mig->cache->get_dirfrag(m->get_dirfrag());
+	mds_rank_t dest(m->get_source().num());
+	utime_t now = ceph_clock_now();
+	assert(dir);
+
+	fim_dout(7) << __func__ << "recv MExportDirDiscoverAck from " << m->get_source() << " on " << *dir << fim_dendl;
+	mig->mds->hit_export_target(now, dest, -1);
+
+	map<CDir*, MIgrator::export_state_t>::iterator it = mig->export_state.find(dir);
+	if(it == mig->export_state.end() || it->second.tid != m->get_tid() || it->second.peer != dest){
+		// must be aborted
+		fim_dout(7) << __func__ << "must have aborted" << fim_dendl;
+	}
+	else{
+		assert(it->second.state == EXPORT_DISCOVERING);
+
+		if(m->is_success()){
+			// release locks to avoid deadlock
+			MDRequestRef mdr = static_cast<MDRequestImpl*>(it->second.mut.get());
+			assert(mdr);
+			mig->mds->mdcache->request_finish(mdr);
+			it->second.mut.reset();
+			// freeze the subtree
+			it->second.state = EXPORT_FREEZING;
+			dir->auth_unpin(this);
+			assert(g_conf->mds_kill_export_at != 3);
+		}
+		else{
+			fim_dout(7) << "peer failed to discover (not active?), canceling" << fim_dendl;
+			mig->export_try_cancel(dir, false);
+		}
+	}
+
+	m->put(); // done
 }
 
 
