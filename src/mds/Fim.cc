@@ -593,7 +593,7 @@ void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
 	}
 
 	// send
-	it->second.state = EXPORT_PREPING;
+	it->second.state = EXPORT_PREPPING;
 	fim_dout(7) << __func__ << "Flow:[5] send prepare message" << fim_dendl;
 	mig->mds->send_message_mds(prep, it->second.peer);
 	assert(g_conf->mds_kill_export_at != 4);

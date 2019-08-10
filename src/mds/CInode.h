@@ -640,6 +640,7 @@ public:
   friend class StrayManager;
   friend class CDir;
   friend class CInodeExport;
+  friend class Fim;
 
   // ---------------------------
   CInode() = delete;
