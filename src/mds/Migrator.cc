@@ -740,7 +740,7 @@ public:
         }
   void finish(int r) override {
     if (r >= 0){
-      if(g_conf->mds_migrator_fim == true)
+      if(g_conf->get_val<bool>("mds_migrator_fim") == true)
         mig->fim_export_frozen(ex, tid);
       else
         mig->export_frozen(ex, tid);
@@ -794,7 +794,7 @@ public:
   C_M_ExportDirWait(Migrator *m, MDRequestRef mdr, int count)
    : MigratorContext(m), mdr(mdr), count(count) {}
   void finish(int r) override {
-    if(g_conf->mds_migrator_fim == true){
+    if(g_conf->get_val<bool>("mds_migrator_fim") == true){
       mig->fim_dispatch_export_dir(mdr, count);
     else
       mig->dispatch_export_dir(mdr, count);
