@@ -26,7 +26,6 @@
 
 #include "mdstypes.h"
 #include "include/types.h"
-#include "Migrator.h"
 
 class MDSRank;
 class CDir;

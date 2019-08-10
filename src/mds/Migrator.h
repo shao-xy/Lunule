@@ -51,9 +51,6 @@ class MGatherCaps;
 
 class EImportStart;
 
-class C_M_ExportDirWait;
-class C_MDC_ExportFreeze;
-
 class Migrator {
 public:
   // export stages.  used to clean up intelligently if there's a failure.

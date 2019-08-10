@@ -57,6 +57,8 @@
 #include "messages/MExportCapsAck.h"
 #include "messages/MGatherCaps.h"
 
+#include "Migrator.cc"
+
 #include "Fim.h"
 
 #include <fstream>
