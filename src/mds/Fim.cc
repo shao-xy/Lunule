@@ -14,11 +14,9 @@
 
 #include "mdstypes.h"
 #include "MDSRank.h"
-#include "Fim.h"
 #include "msg/Messenger.h"
 #include "common/Clock.h"
-#include "CInode.h"
-#include "Migrator.h"
+
 #include "MDSRank.h"
 #include "MDCache.h"
 #include "CInode.h"
@@ -58,6 +56,8 @@
 #include "messages/MExportCaps.h"
 #include "messages/MExportCapsAck.h"
 #include "messages/MGatherCaps.h"
+
+#include "Fim.h"
 
 #include <fstream>
 
