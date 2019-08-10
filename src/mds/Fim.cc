@@ -145,3 +145,82 @@ void Fim::fim_export_dir(CDir *dir, mds_rank_t dest){
   	// return mig->mds->mdcache->dispatch_request(mdr);
   	return mig->dispatch_export_dir(mdr, 0);
 }
+
+/* fim_dispatch_export_dir
+ * send discover msg to importer
+ */
+void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
+	fim_dout(7) << __func__ << *mdr << fim_dendl;
+
+	CDir *dir = mdr->more()->export_dir;
+	map<CDir *, export_state_t>::iterator it = mig->export_state.find(dir);
+	if(it == mig->export_state.end() || it->second.tid != mdr->reqid.tid){
+		// export must have aborted
+		mig->mds->mdcache->request_finish(mdr);
+		return;
+	}
+
+	assert(it->second.state == Migrator::EXPORT_LOCKING);
+	mds_rank_t dest = it->second.peer;
+	if(!mig->mds->is_export_target(dest)){
+		fim_dout(7) << __func__ << "dest is not yet an export target" << fim_dendl;
+		if(count > 3){
+			fim_dout(7) << __func__ << "dest has not been added as export target after three MDSMap epochs, canceling export" << fim_dendl;
+			mig->export_try_cancel(dir);
+			return;
+		}
+
+		mig->mds->locker->drop_locks(mdr.get());
+		mdr->drop_local_auth_pins();
+
+		mig->mds->wait_for_mdsmap(mig->mds->mdsmap->get_epoch(), new C_M_ExportDirWait(mig, mdr, count+1));
+    	return;
+	}
+
+	if(!dir->inode->get_parent_dn()){
+		fim_dout(7) << __func__ << "waiting for dir to become stable before export: " << *dir << fim_dendl;
+		dir->add_waiter(CDir::WAIT_CREATED, new C_M_ExportDirWait(mig, mdr, 1));
+		return;
+	}
+
+	if(mdr->aborted || dir->is_frozen() || dir->is_freezing()){
+		fim_dout(7) << __func__ << "wouldblock|freezing|frozen, canceling export" << fim_dendl;
+		mig->export_try_cancel(dir);
+		return;
+	}
+
+	// locking
+	set<SimpleLock*> rdlocks;
+	set<SimpleLock*> xlocks;
+	set<SimpleLock*> wrlocks;
+	mig->get_export_lock_set(dir, rdlocks);
+	wrlocks.insert(&dir->get_inode()->filelock);
+	wrlocks.insert(&dir->get_inode()->nestlock);
+	if(dir->get_inode()->is_auth()){
+		dir->get_inode()->filelock.set_scatter_wanted();
+		dir->get_inode()->nestlock.set_scatter_wanted();
+	}
+	if(!mig->mds->acquire_locks(mdr, rdlocks, wrlocks, xlocks, NULL, NULL, true)){
+		if(mdr->aborted)
+			mig->export_try_cancel(dir);
+		return;
+	}
+
+	// discovering step
+	assert(g_conf->mds_kill_export_at != 1);
+	it->second.state = Migrator::EXPORT_DISCOVERING;
+
+	filepath path;
+	dir->inode->make_path(path);
+	MExportDirDiscover *discover = new MExportDirDiscover(dir->frag(), path, mig->mds->get_nodeid(), it->second.tid);
+	mig->mds->send_message_mds(discover, dest);
+
+	assert(g_conf->mds_kill_export_at != 2);
+
+	it->second.last_cum_auth_pins_change = ceph_clock_now();
+
+	// start the freeze, but hold it up with an auth_pin.
+	dir->freeze_tree();
+	assert(dir->is_freezing_tre());
+	dir->add_waiter(CDir::WAIT_FROZEN, new C_MDC_ExportFreeze(mig, dir, it->second.tid));
+}

@@ -789,7 +789,12 @@ public:
   C_M_ExportDirWait(Migrator *m, MDRequestRef mdr, int count)
    : MigratorContext(m), mdr(mdr), count(count) {}
   void finish(int r) override {
-    mig->dispatch_export_dir(mdr, count);
+    if(g_conf->mds_migrator_fim == true){
+      Fim *fim = new Fim(this);
+      fim->dispatch_export_dir(mdr, count);
+    }
+    else
+      mig->dispatch_export_dir(mdr, count);
   }
 };
 
