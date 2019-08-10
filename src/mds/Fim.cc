@@ -200,7 +200,7 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 		dir->get_inode()->filelock.set_scatter_wanted();
 		dir->get_inode()->nestlock.set_scatter_wanted();
 	}
-	if(!mig->mds->lock->acquire_locks(mdr, rdlocks, wrlocks, xlocks, NULL, NULL, true)){
+	if(!mig->mds->locker->acquire_locks(mdr, rdlocks, wrlocks, xlocks, NULL, NULL, true)){
 		if(mdr->aborted)
 			mig->export_try_cancel(dir);
 		return;

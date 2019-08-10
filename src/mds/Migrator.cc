@@ -1108,7 +1108,7 @@ void Migrator::export_sessions_flushed(CDir *dir, uint64_t tid)
     export_go(dir);     // start export.
 }
 
-void fim_export_frozen(CDir *dir, uint64_t tid){
+void Migrator::fim_export_frozen(CDir *dir, uint64_t tid){
   Fim *fim = new Fim(this);
   fim->fim_export_frozen(dir, tid);
 }
