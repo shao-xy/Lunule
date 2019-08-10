@@ -153,7 +153,7 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 	fim_dout(7) << __func__ << *mdr << fim_dendl;
 
 	CDir *dir = mdr->more()->export_dir;
-	map<CDir *, export_state_t>::iterator it = mig->export_state.find(dir);
+	map<CDir *, Migrator::export_state_t>::iterator it = mig->export_state.find(dir);
 	if(it == mig->export_state.end() || it->second.tid != mdr->reqid.tid){
 		// export must have aborted
 		mig->mds->mdcache->request_finish(mdr);
