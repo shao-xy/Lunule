@@ -909,7 +909,7 @@ void Migrator::export_dir(CDir *dir, mds_rank_t dest)
   return mds->mdcache->dispatch_request(mdr);
 }
 
-void Migrator::fim_dispatch_export_dir(MDRequestRef *mdr, int count){
+void Migrator::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
   Fim *fim = new Fim(this);
   fim->fim_dispatch_export_dir(mdr, count);
 }
