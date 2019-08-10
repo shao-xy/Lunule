@@ -19,6 +19,45 @@
 #include "common/Clock.h"
 #include "CInode.h"
 #include "Migrator.h"
+#include "MDSRank.h"
+#include "MDCache.h"
+#include "CInode.h"
+#include "CDir.h"
+#include "CDentry.h"
+#include "Migrator.h"
+#include "Locker.h"
+#include "Server.h"
+
+#include "MDBalancer.h"
+#include "MDLog.h"
+#include "MDSMap.h"
+#include "Mutation.h"
+
+#include "include/filepath.h"
+
+#include "events/EExport.h"
+#include "events/EImportStart.h"
+#include "events/EImportFinish.h"
+#include "events/ESessions.h"
+
+#include "msg/Messenger.h"
+
+#include "messages/MClientCaps.h"
+
+#include "messages/MExportDirDiscover.h"
+#include "messages/MExportDirDiscoverAck.h"
+#include "messages/MExportDirCancel.h"
+#include "messages/MExportDirPrep.h"
+#include "messages/MExportDirPrepAck.h"
+#include "messages/MExportDir.h"
+#include "messages/MExportDirAck.h"
+#include "messages/MExportDirNotify.h"
+#include "messages/MExportDirNotifyAck.h"
+#include "messages/MExportDirFinish.h"
+
+#include "messages/MExportCaps.h"
+#include "messages/MExportCapsAck.h"
+#include "messages/MGatherCaps.h"
 
 #include <fstream>
 
