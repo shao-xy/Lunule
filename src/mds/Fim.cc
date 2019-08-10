@@ -411,7 +411,7 @@ void Fim::fim_handle_export_discover_ack(MExportDirDiscoverAck *m){
 	fim_dout(7) << __func__ << "recv MExportDirDiscoverAck from " << m->get_source() << " on " << *dir << fim_dendl;
 	mig->mds->hit_export_target(now, dest, -1);
 
-	map<CDir*, MIgrator::export_state_t>::iterator it = mig->export_state.find(dir);
+	map<CDir*, Migrator::export_state_t>::iterator it = mig->export_state.find(dir);
 	if(it == mig->export_state.end() || it->second.tid != m->get_tid() || it->second.peer != dest){
 		// must be aborted
 		fim_dout(7) << __func__ << "must have aborted" << fim_dendl;
