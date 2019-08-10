@@ -27,6 +27,32 @@
 #include "mdstypes.h"
 #include "Migrator.h"
 
+class MDSRank;
+class CDir;
+class CInode;
+class CDentry;
+
+class MExportDirDiscover;
+class MExportDirDiscoverAck;
+class MExportDirCancel;
+class MExportDirPrep;
+class MExportDirPrepAck;
+class MExportDir;
+class MExportDirAck;
+class MExportDirNotify;
+class MExportDirNotifyAck;
+class MExportDirFinish;
+
+class MExportCaps;
+class MExportCapsAck;
+class MGatherCaps;
+
+class EImportStart;
+
+class Migrator;
+class C_M_ExportDirWait;
+class C_MDC_ExportFreeze;
+
 class Fim{
 public:
 	Fim(Migrator *m);

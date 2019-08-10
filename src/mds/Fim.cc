@@ -200,7 +200,7 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 		dir->get_inode()->filelock.set_scatter_wanted();
 		dir->get_inode()->nestlock.set_scatter_wanted();
 	}
-	if(!mig->mds->acquire_locks(mdr, rdlocks, wrlocks, xlocks, NULL, NULL, true)){
+	if(!mig->mds->lock->acquire_locks(mdr, rdlocks, wrlocks, xlocks, NULL, NULL, true)){
 		if(mdr->aborted)
 			mig->export_try_cancel(dir);
 		return;
@@ -212,7 +212,7 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 
 	filepath path;
 	dir->inode->make_path(path);
-	MExportDirDiscover *discover = new MExportDirDiscover(dir->frag(), path, mig->mds->get_nodeid(), it->second.tid);
+	MExportDirDiscover *discover = new MExportDirDiscover(dir->dirfrag(), path, mig->mds->get_nodeid(), it->second.tid);
 	mig->mds->send_message_mds(discover, dest);
 
 	assert(g_conf->mds_kill_export_at != 2);
@@ -221,6 +221,6 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 
 	// start the freeze, but hold it up with an auth_pin.
 	dir->freeze_tree();
-	assert(dir->is_freezing_tre());
+	assert(dir->is_freezing_tree());
 	dir->add_waiter(CDir::WAIT_FROZEN, new C_MDC_ExportFreeze(mig, dir, it->second.tid));
 }
