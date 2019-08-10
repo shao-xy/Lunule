@@ -503,7 +503,7 @@ void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
 
  	// note the bounds
  	set<CDir*> bounds;
- 	mig->cache->get_subtree_bound(dir, bounds);
+ 	mig->cache->get_subtree_bounds(dir, bounds);
 
  	// generate the prepare message and log the entry
  	MExportDirPrep *prep = new MExportDirPrep(dir->dirfrag(), it->second.tid);
@@ -511,7 +511,7 @@ void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
  	// include list of bystanders
  	for(const auto &p : dir->get_replicas()){
  		if(p.first != it->second.peer){
- 			fim_dou(7) << __func__ << "bystander mds." << p.first << fim_dendl;
+ 			fim_dout(7) << __func__ << "bystander mds." << p.first << fim_dendl;
  			prep->add_bystander(p.first);
  		}
  	}
