@@ -145,6 +145,22 @@ public:
   }
 };
 
+class C_MDS_ImportDirLoggedStart : public MigratorLogContext {
+  dirfrag_t df;
+  CDir *dir;
+  mds_rank_t from;
+public:
+  map<client_t,entity_inst_t> imported_client_map;
+  map<client_t,uint64_t> sseqmap;
+
+  C_MDS_ImportDirLoggedStart(Migrator *m, CDir *d, mds_rank_t f) :
+    MigratorLogContext(m), df(d->dirfrag()), dir(d), from(f) {
+  }
+  void finish(int r) override {
+    mig->import_logged_start(df, dir, from, imported_client_map, sseqmap);
+  }
+};
+
 // ----  Fim ----
 Fim::Fim(Migrator *m) : mig(m){
 	fim_dout(7) << " I am Fim, Hi~" << fim_dendl;
@@ -938,6 +954,138 @@ void Fim::fim_export_go_synced(CDir *dir, uint64_t tid){
 	// stats
 	if (mig->mds->logger) mig->mds->logger->inc(l_mds_exported);
 	if (mig->mds->logger) mig->mds->logger->inc(l_mds_exported_inodes, num_exported_inodes);
+
+	// mig->cache->show_subtrees();
+}
+
+void Fim::fim_handle_export_dir(MExportDir *m){
+	fim_dout(7) << __func__ << "Flow[10] recv Export message" << fim_dendl;
+	assert (g_conf->mds_kill_import_at != 5);
+	CDir *dir = mig->cache->get_dirfrag(m->dirfrag);
+	assert(dir);
+
+	mds_rank_t oldauth = mds_rank_t(m->get_source().num());
+	fim_dout(7) << __func__ << "importing " << *dir << " from " << oldauth << dendl;
+	assert(!dir->is_auth());
+
+	map<dirfrag_t,Migrator::import_state_t>::iterator it = mig->import_state.find(m->dirfrag);
+	assert(it != mig->import_state.end());
+	assert(it->second.state == IMPORT_PREPPED);
+	assert(it->second.tid == m->get_tid());
+	assert(it->second.peer == oldauth);
+
+	utime_t now = ceph_clock_now();
+
+	if (!dir->get_inode()->dirfragtree.is_leaf(dir->get_frag()))
+		dir->get_inode()->dirfragtree.force_to_leaf(g_ceph_context, dir->get_frag());
+
+	// mig->cache->show_subtrees();
+
+	C_MDS_ImportDirLoggedStart *onlogged = new C_MDS_ImportDirLoggedStart(mig, dir, oldauth);
+
+	// start the journal entry
+	EImportStart *le = new EImportStart(mig->mds->mdlog, dir->dirfrag(), m->bounds, oldauth);
+	mig->mds->mdlog->start_entry(le);
+
+	le->metablob.add_dir_context(dir);
+
+	// adjust auth (list us _first_)
+	mig->cache->adjust_subtree_auth(dir, mig->mds->get_nodeid(), oldauth);
+
+	// new client sessions, open these after we journal
+	// include imported sessions in EImportStart
+	bufferlist::iterator cmp = m->client_map.begin();
+	::decode(onlogged->imported_client_map, cmp);
+	assert(cmp.end());
+	le->cmapv = mig->mds->server->prepare_force_open_sessions(onlogged->imported_client_map, onlogged->sseqmap);
+	le->client_map.claim(m->client_map);
+
+	bufferlist::iterator blp = m->export_data.begin();
+	int num_imported_inodes = 0;
+	while (!blp.end()) {
+	num_imported_inodes += 
+	  mig->decode_import_dir(blp,
+			oldauth, 
+			dir,                 // import root
+			le,
+			mig->mds->mdlog->get_current_segment(),
+			it->second.peer_exports,
+			it->second.updated_scatterlocks,
+			now);
+	}
+	fim_dout(7) << __func__ << " " << m->bounds.size() << " imported bounds" << dendl;
+
+	// include bounds in EImportStart
+	set<CDir*> import_bounds;
+	for (vector<dirfrag_t>::iterator p = m->bounds.begin(); p != m->bounds.end(); ++p) {
+		CDir *bd = mig->cache->get_dirfrag(*p);
+		assert(bd);
+		le->metablob.add_dir(bd, false);  // note that parent metadata is already in the event
+		import_bounds.insert(bd);
+	}
+	mig->cache->verify_subtree_bounds(dir, import_bounds);
+
+	// adjust popularity
+	mig->mds->balancer->add_import(dir, now);
+
+	fim_dout(7) << __func__ << "did " << *dir << dendl;
+
+	// note state
+	it->second.state = IMPORT_LOGGINGSTART;
+	assert (g_conf->mds_kill_import_at != 6);
+
+	// log it
+	mig->mds->mdlog->submit_entry(le, onlogged);
+	mig->mds->mdlog->flush();
+
+	// some stats
+	if (mig->mds->logger) {
+	mig->mds->logger->inc(l_mds_imported);
+	mig->mds->logger->inc(l_mds_imported_inodes, num_imported_inodes);
+	}
+
+	m->put();
+}
+
+void Fim::fim_import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from,
+         map<client_t,entity_inst_t> &imported_client_map,
+         map<client_t,uint64_t>& sseqmap){
+	
+	map<dirfrag_t, Migrator::import_state_t>::iterator it = mig->import_state.find(dir->dirfrag());
+	if (it == mig->import_state.end() || it->second.state != IMPORT_LOGGINGSTART) {
+		fim_out(7) << __func__ << "import " << df << " must have aborted" << fim_dendl;
+		mig->mds->server->finish_force_open_sessions(imported_client_map, sseqmap);
+		return;
+	}
+
+	fim_dout(7) << __func__ << "import_logged " << *dir << fim_dendl;
+
+	// note state
+	it->second.state = IMPORT_ACKING;
+
+	assert (g_conf->mds_kill_import_at != 7);
+
+	// force open client sessions and finish cap import
+	mig->mds->server->finish_force_open_sessions(imported_client_map, sseqmap, false);
+	it->second.client_map.swap(imported_client_map);
+
+	map<inodeno_t,map<client_t,Capability::Import> > imported_caps;
+	for (map<CInode*, map<client_t,Capability::Export> >::iterator p = it->second.peer_exports.begin(); p != it->second.peer_exports.end(); ++p) {
+		// parameter 'peer' is NONE, delay sending cap import messages to client
+		mig->finish_import_inode_caps(p->first, MDS_RANK_NONE, true, p->second, imported_caps[p->first->ino()]);
+	}
+
+	// send notify's etc.
+	fim_dout(7) << __func__ << "sending ack for " << *dir << " to old auth mds." << from << fim_dendl;
+
+	// test surviving observer of a failed migration that did not complete
+	//assert(dir->replica_map.size() < 2 || mds->get_nodeid() != 0);
+
+	MExportDirAck *ack = new MExportDirAck(dir->dirfrag(), it->second.tid);
+	::encode(imported_caps, ack->imported_caps);
+	fim_dout(7) << __func__ << "Flow:[11] send ExportAck message!" << dendl;
+	mig->mds->send_message_mds(ack, from);
+	assert (g_conf->mds_kill_import_at != 8);
 
 	// mig->cache->show_subtrees();
 }

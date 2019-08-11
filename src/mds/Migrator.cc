@@ -124,7 +124,10 @@ void Migrator::dispatch(Message *m)
       handle_export_prep(static_cast<MExportDirPrep*>(m));
     break;
   case MSG_MDS_EXPORTDIR:
-    handle_export_dir(static_cast<MExportDir*>(m));
+    if(g_conf->mds_migrator_fim == true)
+      fim_handle_export_dir(static_cast<MExportDir*>(m));
+    else
+      handle_export_dir(static_cast<MExportDir*>(m));
     break;
   case MSG_MDS_EXPORTDIRFINISH:
     handle_export_finish(static_cast<MExportDirFinish*>(m));
@@ -2887,9 +2890,17 @@ public:
     MigratorLogContext(m), df(d->dirfrag()), dir(d), from(f) {
   }
   void finish(int r) override {
-    mig->import_logged_start(df, dir, from, imported_client_map, sseqmap);
+    if(g_conf->mds_migrator_fim == true)
+      mig->fim_import_logger_start(df, dir, from, imported_client_map, sseqmap);
+    else
+      mig->import_logged_start(df, dir, from, imported_client_map, sseqmap);
   }
 };
+
+void Migrator::fim_handle_export_dir(MExportDir *m){
+  Fim *fim = new Fim(this);
+  fim->fim_handle_export_dir(m);
+}
 
 /* This function DOES put the passed message before returning*/
 void Migrator::handle_export_dir(MExportDir *m)
@@ -3265,7 +3276,12 @@ void Migrator::import_reverse_final(CDir *dir)
 }
 
 
-
+void Migrator::fim_import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from,
+         map<client_t,entity_inst_t> &imported_client_map,
+         map<client_t,uint64_t>& sseqmap){
+  Fim *fim = new Fim(this);
+  fim->fim_import_logged_start(df, dir, from, imported_client_map, sseqmap);
+}
 
 void Migrator::import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from,
 				   map<client_t,entity_inst_t>& imported_client_map,
