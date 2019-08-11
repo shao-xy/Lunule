@@ -157,7 +157,10 @@ public:
     MigratorLogContext(m), df(d->dirfrag()), dir(d), from(f) {
   }
   void finish(int r) override {
-    mig->import_logged_start(df, dir, from, imported_client_map, sseqmap);
+    if(g_conf->mds_migrator_fim == true)
+      mig->fim_import_logger_start(df, dir, from, imported_client_map, sseqmap);
+    else
+      mig->import_logged_start(df, dir, from, imported_client_map, sseqmap);
   }
 };
 
