@@ -118,7 +118,10 @@ void Migrator::dispatch(Message *m)
       handle_export_discover(static_cast<MExportDirDiscover*>(m));
     break;
   case MSG_MDS_EXPORTDIRPREP:
-    handle_export_prep(static_cast<MExportDirPrep*>(m));
+    if(g_conf->mds_migrator_fim == true)
+      fim_handle_export_prep(static_cast<MExportDirPrep*>(m));
+    else
+      handle_export_prep(static_cast<MExportDirPrep*>(m));
     break;
   case MSG_MDS_EXPORTDIR:
     handle_export_dir(static_cast<MExportDir*>(m));
@@ -2571,6 +2574,11 @@ void Migrator::handle_export_cancel(MExportDirCancel *m)
     assert(0 == "got export_cancel in weird state");
   }
   m->put();
+}
+
+void Migrator::fim_handle_export_prep(MExportDirPrep *m){
+  Fim *fim = new Fim(this);
+  fim->fim_handle_export_prep(m);
 }
 
 /* This function DOES put the passed message before returning*/

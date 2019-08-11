@@ -195,6 +195,7 @@ protected:
 
   void fim_handle_export_discover(MExportDirDiscover *m);
   void fim_handle_export_discover_ack(MExportDirDiscoverAck *m);
+  void fim_handle_export_prep(MExportDirPrep *m);
 
   void import_reverse_discovering(dirfrag_t df);
   void import_reverse_discovered(dirfrag_t df, CInode *diri);

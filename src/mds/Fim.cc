@@ -594,7 +594,7 @@ void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
 
 	// send
 	it->second.state = EXPORT_PREPPING;
-	fim_dout(7) << __func__ << "Flow:[5] send prepare message" << fim_dendl;
+	fim_dout(7) << __func__ << "Flow:[5] send Prepare message" << fim_dendl;
 	mig->mds->send_message_mds(prep, it->second.peer);
 	assert(g_conf->mds_kill_export_at != 4);
 
@@ -608,4 +608,212 @@ void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
 		gather.set_finisher(new C_M_ExportSessionsFlushed(mig, dir, it->second.tid));
 		gather.activate();
 	}
+}
+
+void Fim::fim_handle_export_prep(MExportDirPrep *m){
+	fim_dout(7) << __func__ << "Flow:[6] recv Prepare message" << fim_dendl;
+	mds_rank_t oldauth = mds_rank_t(m->get_source().num());
+	assert(oldauth != mig->mds->get_nodeid());
+
+	CDir *dir;
+	CInode *diri;
+	list<MDSInternalContextBase*> finished;
+
+	// assimilate root dir
+	map<dirfrag_t, Migrator::import_state_t>::iterator it = mig->import_state.find(m->get_dirfrag());
+	if(!m->did_assim()){
+		assert(it != mig->import_state.end());
+		assert(it->second.state == IMPORT_DISCOVERED);
+		assert(it->second.peer == oldauth);
+		diri = mig->cache->get_inode(m->get_dirfrag().ino);
+
+		assert(diri);
+		bufferlist::iterator p = m->basedir.begin();
+		dir = mig->cache->add_replica_dir(p, diri, oldauth, finished);
+		fim_dout(7) << __func__ << "fim_handle_export_prep on " << *dir << " (first pass)" << fim_dendl;
+	}
+	else{
+		if(it == mig->import_state.end() || it->second.peer != oldauth || it->second.tid != m->get_tid()){
+			fim_dout(7) << __func__ << "obsolete message, dropping" << fim_dendl;
+			m->put();
+			return;
+		}
+		assert(it->second.state == IMPORT_PREPPING);
+		assert(it->second.peer == oldauth);
+		dir = mig->cache->get_dirfrag(m->get_dirfrag());
+		assert(dir);
+		fim_dout(7) << __func__ << "fim_handle_export_prep on " << *dir << " (subsequent pass)" << fim_dendl;
+		diri = dir->get_inode();
+	}
+	assert(dir->is_auth() == false);
+	// mig->cache->show_subtrees();
+
+	if(m->get_bounds().empty()){
+		fim_dout(7) << __func__ << "bounds is empty" << fim_dendl;
+	}
+	else{
+		fim_dout(7) << __func__ << "bounds is not empty, size " << m->get_bounds().size() << fim_dendl;
+	}
+
+	// build import bound map
+	map<inodeno_t, fragset_t> import_bound_fragset;
+	for(list<dirfrag_t>::iterator p = m->get_bounds().begin(); p != m->get_bounds().end(); ++p){
+		fim_dout(7) << __func__ << "bound " << *p << fim_dendl;
+		import_bound_fragset[p->ino].insert(p->frag);
+	}
+
+	// assimilate contents?
+	if(!m->did_assim()){
+		fim_dout(7) << __func__ << "doing assim on " << *dir << fim_dendl;
+		m->mark_assim();
+
+		// change import state
+		it->second.state = IMPORT_PREPPING;
+		it->second.bound_ls = m->get_bounds();
+		it->second.bystanders = m->get_bystanders();
+		assert(g_conf->mds_kill_import_at != 3);
+
+		// bystander list
+		fim_dout(7) << __func__ << "bystanders are " << it->second.bystanders << fim_dendl;
+
+		// move pin to dir
+		diri->put(CInode::PIN_IMPORTING);
+		dir->get(CDir::PIN_IMPORTING);
+		dir->state_set(CDir::STATE_IMPORTING);
+
+		// assimilate traces to exports
+		// each trace is: df ('-' | ('f' dir | 'd') dentry inode (dir dentry inode)*)
+		for(list<bufferlist>::iterator p = m->traces.begin(); p != m->traces.end(); ++p){
+			bufferlist::iterator q = p->begin();
+			dirfrag_t df;
+			::decode(df, q);
+			char start;
+			::decode(start, q);
+			fim_dout(7) << __func__ << "trace from " << df << " start " << start << " len " << p->length() << fim_dendl;
+
+			CDir *cur = 0;
+			if (start == 'd') {
+				cur = mig->cache->get_dirfrag(df);
+				assert(cur);
+				fim_dout(7) << __func__ << "had " << *cur << fim_dendl;
+			} 
+			else if (start == 'f') {
+				CInode *in = mig->cache->get_inode(df.ino);
+				assert(in);
+				fim_dout(7) << __func__ << "had " << *in << fim_dendl;
+				cur = mig->cache->add_replica_dir(q, in, oldauth, finished);
+				fim_dout(7) << __func__ << "added " << *cur << fim_dendl;
+			}
+			else if (start == '-') {
+				// nothing
+			} 
+			else
+				assert(0 == "unrecognized start char");
+
+			while (!q.end()) {
+				CDentry *dn = mig->cache->add_replica_dentry(q, cur, finished);
+				fim_dout(7) << __func__ << "added " << *dn << fim_dendl;
+				CInode *in = mig->cache->add_replica_inode(q, dn, finished);
+				fim_dout(7) << __func__ << "added " << *in << fim_dendl;
+				if (q.end())
+					break;
+				cur = mig->cache->add_replica_dir(q, in, oldauth, finished);
+				fim_dout(7) << __func__ << "added " << *cur << fim_dendl;
+			}
+		}
+		// make bound sticky
+		for (map<inodeno_t,fragset_t>::iterator p = import_bound_fragset.begin(); p != import_bound_fragset.end();++p) {
+			CInode *in = mig->cache->get_inode(p->first);
+			assert(in);
+			in->get_stickydirs();
+			fim_dout(7) << __func__ << "set stickydirs on bound inode " << *in << fim_dendl;
+    	}
+	}
+	else {
+    	fim_dout(7) << __func__ << "not doing assim on " << *dir << fim_dendl;
+	}
+
+	if (!finished.empty())
+    	mig->mds->queue_waiters(finished);
+
+    bool success = true;
+	if (mig->mds->is_active()) {
+		// open all bounds
+		set<CDir*> import_bounds;
+		for (map<inodeno_t,fragset_t>::iterator p = import_bound_fragset.begin(); p != import_bound_fragset.end(); ++p) {
+			CInode *in = mig->cache->get_inode(p->first);
+			assert(in);
+
+			// map fragset into a frag_t list, based on the inode fragtree
+			list<frag_t> fglist;
+			for (set<frag_t>::iterator q = p->second.begin(); q != p->second.end(); ++q)
+				in->dirfragtree.get_leaves_under(*q, fglist);
+			fim_dout(7) << __func__ << "bound inode " << p->first << " fragset " << p->second << " maps to " << fglist << fim_dendl;
+
+			for (list<frag_t>::iterator q = fglist.begin(); q != fglist.end(); ++q) {
+				CDir *bound = mig->cache->get_dirfrag(dirfrag_t(p->first, *q));
+				if (!bound) {
+					fim_dout(7) << __func__ << "opening bounding dirfrag " << *q << " on " << *in << fim_dendl;
+					mig->cache->open_remote_dirfrag(in, *q, new C_MDS_RetryMessage(mds, m));
+					return;
+				}
+
+				if (!bound->state_test(CDir::STATE_IMPORTBOUND)) {
+			  	fim_dout(7) << __func__ << "pinning import bound " << *bound << fim_dendl;
+			  	bound->get(CDir::PIN_IMPORTBOUND);
+			  	bound->state_set(CDir::STATE_IMPORTBOUND);
+				} 
+				else {
+			  		fim_dout(7) << __func__ << "already pinned import bound " << *bound << fim_dendl;
+				}
+				import_bounds.insert(bound);
+		  	}
+		}
+
+		fim_dout(7) << __func__ << "all ready, noting auth and freezing import region" << fim_dendl; 
+
+		if (!mds->mdcache->is_readonly() && dir->get_inode()->filelock.can_wrlock(-1) && dir->get_inode()->nestlock.can_wrlock(-1)) {
+			it->second.mut = new MutationImpl();
+			// force some locks.  hacky.
+			mig->mds->locker->wrlock_force(&dir->inode->filelock, it->second.mut);
+			mig->mds->locker->wrlock_force(&dir->inode->nestlock, it->second.mut);
+
+			// note that i am an ambiguous auth for this subtree.
+			// specify bounds, since the exporter explicitly defines the region.
+
+			if(import_bounds.empty()){
+				fim_dout(7) << __func__ << "we will adjust the import_bounds, and it is empty " << fim_dendl;
+			}
+			else{
+				fim_dout(7) << __func__ << "we will adjust the import_bounds, and it is NOT empty "<< fim_dendl;
+			}
+
+			mig->cache->adjust_bounded_subtree_auth(dir, import_bounds, pair<int,int>(oldauth, mds->get_nodeid()));
+			mig->cache->verify_subtree_bounds(dir, import_bounds);
+			// freeze.
+			dir->_freeze_tree();
+			// note new state
+			it->second.state = IMPORT_PREPPED;
+		} 
+		else {
+			fim_dout(7) << __func__ << "couldn't acquire all needed locks, failing. " << *dir << fim_dendl;
+		  	success = false;
+		}
+	}
+	else {
+		fim_dout(7) << __func__ << "not active, failing. " << *dir << fim_dendl;
+		success = false;
+	}
+
+	if (!success)
+		mig->import_reverse_prepping(dir, it->second);
+
+	// ok!
+	fim_dout(7) << __func__ << "sending export_prep_ack on " << *dir << fim_dendl;
+	fim_dout(7) << __func__ << "Flow:[6] send PrepareACK message" << fim_dendl;
+	mig->mds->send_message(new MExportDirPrepAck(dir->dirfrag(), success, m->get_tid()), m->get_connection());
+
+	assert(g_conf->mds_kill_import_at != 4);
+	// done 
+	m->put();
 }
