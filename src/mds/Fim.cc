@@ -968,7 +968,7 @@ void Fim::fim_handle_export_dir(MExportDir *m){
 	assert(dir);
 
 	mds_rank_t oldauth = mds_rank_t(m->get_source().num());
-	fim_dout(7) << __func__ << "importing " << *dir << " from " << oldauth << dendl;
+	fim_dout(7) << __func__ << "importing " << *dir << " from " << oldauth << fim_dendl;
 	assert(!dir->is_auth());
 
 	map<dirfrag_t,Migrator::import_state_t>::iterator it = mig->import_state.find(m->dirfrag);
@@ -1016,7 +1016,7 @@ void Fim::fim_handle_export_dir(MExportDir *m){
 			it->second.updated_scatterlocks,
 			now);
 	}
-	fim_dout(7) << __func__ << " " << m->bounds.size() << " imported bounds" << dendl;
+	fim_dout(7) << __func__ << " " << m->bounds.size() << " imported bounds" << fim_dendl;
 
 	// include bounds in EImportStart
 	set<CDir*> import_bounds;
@@ -1031,7 +1031,7 @@ void Fim::fim_handle_export_dir(MExportDir *m){
 	// adjust popularity
 	mig->mds->balancer->add_import(dir, now);
 
-	fim_dout(7) << __func__ << "did " << *dir << dendl;
+	fim_dout(7) << __func__ << "did " << *dir << fim_dendl;
 
 	// note state
 	it->second.state = IMPORT_LOGGINGSTART;
@@ -1043,8 +1043,8 @@ void Fim::fim_handle_export_dir(MExportDir *m){
 
 	// some stats
 	if (mig->mds->logger) {
-	mig->mds->logger->inc(l_mds_imported);
-	mig->mds->logger->inc(l_mds_imported_inodes, num_imported_inodes);
+		mig->mds->logger->inc(l_mds_imported);
+		mig->mds->logger->inc(l_mds_imported_inodes, num_imported_inodes);
 	}
 
 	m->put();
@@ -1054,7 +1054,7 @@ void Fim::fim_import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from, map<
 	
 	map<dirfrag_t, Migrator::import_state_t>::iterator it = mig->import_state.find(dir->dirfrag());
 	if (it == mig->import_state.end() || it->second.state != IMPORT_LOGGINGSTART) {
-		fim_out(7) << __func__ << "import " << df << " must have aborted" << fim_dendl;
+		fim_dout(7) << __func__ << "import " << df << " must have aborted" << fim_dendl;
 		mig->mds->server->finish_force_open_sessions(imported_client_map, sseqmap);
 		return;
 	}
