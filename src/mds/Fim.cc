@@ -754,7 +754,7 @@ void Fim::fim_handle_export_prep(MExportDirPrep *m){
 				CDir *bound = mig->cache->get_dirfrag(dirfrag_t(p->first, *q));
 				if (!bound) {
 					fim_dout(7) << __func__ << "opening bounding dirfrag " << *q << " on " << *in << fim_dendl;
-					mig->cache->open_remote_dirfrag(in, *q, new C_MDS_RetryMessage(mds, m));
+					mig->cache->open_remote_dirfrag(in, *q, new C_MDS_RetryMessage(mig->mds, m));
 					return;
 				}
 
@@ -772,7 +772,7 @@ void Fim::fim_handle_export_prep(MExportDirPrep *m){
 
 		fim_dout(7) << __func__ << "all ready, noting auth and freezing import region" << fim_dendl; 
 
-		if (!mds->mdcache->is_readonly() && dir->get_inode()->filelock.can_wrlock(-1) && dir->get_inode()->nestlock.can_wrlock(-1)) {
+		if (!mig->mds->mdcache->is_readonly() && dir->get_inode()->filelock.can_wrlock(-1) && dir->get_inode()->nestlock.can_wrlock(-1)) {
 			it->second.mut = new MutationImpl();
 			// force some locks.  hacky.
 			mig->mds->locker->wrlock_force(&dir->inode->filelock, it->second.mut);
