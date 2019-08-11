@@ -856,7 +856,7 @@ void Fim::fim_handle_export_prep_ack(MExportDirPrepAck *m){
 	for (const auto &p : dir->get_replicas()) {
 		if (p.first == it->second.peer) 
 			continue;
-		if (mds->is_cluster_degraded() && !mds->mdsmap->is_clientreplay_or_active_or_stopping(p.first))
+		if (mig->smds->is_cluster_degraded() && !mig->mds->mdsmap->is_clientreplay_or_active_or_stopping(p.first))
 	  		continue;  // only if active
 		it->second.warning_ack_waiting.insert(p.first);
 		it->second.notify_ack_waiting.insert(p.first);  // we'll eventually get a notifyack, too!
@@ -915,7 +915,7 @@ void Fim::fim_export_go_synced(CDir *dir, uint64_t tid){
 	// fill export message with cache data
 	MExportDir *req = new MExportDir(dir->dirfrag(), it->second.tid);
 	map<client_t,entity_inst_t> exported_client_map;
-	uint64_t num_exported_inodes = encode_export_dir(req->export_data,
+	uint64_t num_exported_inodes = mig->encode_export_dir(req->export_data,
 					      dir,   // recur start point
 					      exported_client_map,
 					      now);

@@ -1565,7 +1565,7 @@ public:
     }
   void finish(int r) override {
     if(g_conf->mds_migrator_fim == true)
-      mig->fim_export_go_synced(ex, tid);
+      mig->fim_export_go_synced(dir, tid);
     else
       mig->export_go_synced(dir, tid);
   }
