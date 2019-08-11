@@ -130,7 +130,10 @@ void Migrator::dispatch(Message *m)
       handle_export_dir(static_cast<MExportDir*>(m));
     break;
   case MSG_MDS_EXPORTDIRFINISH:
-    handle_export_finish(static_cast<MExportDirFinish*>(m));
+    if(g_conf->mds_migrator_fim == true)
+      fim_handle_export_finish(static_cast<MExportDirFinish*>(m));
+    else
+      handle_export_finish(static_cast<MExportDirFinish*>(m));
     break;
   case MSG_MDS_EXPORTDIRCANCEL:
     handle_export_cancel(static_cast<MExportDirCancel*>(m));
@@ -150,7 +153,10 @@ void Migrator::dispatch(Message *m)
       handle_export_prep_ack(static_cast<MExportDirPrepAck*>(m));
     break;
   case MSG_MDS_EXPORTDIRACK:
-    handle_export_ack(static_cast<MExportDirAck*>(m));
+    if(g_conf->mds_migrator_fim == true)
+      fim_handle_export_ack(static_cast<MExportDirAck*>(m));
+    else
+      handle_export_ack(static_cast<MExportDirAck*>(m));
     break;
   case MSG_MDS_EXPORTDIRNOTIFYACK:
     handle_export_notify_ack(static_cast<MExportDirNotifyAck*>(m));
@@ -1972,10 +1978,17 @@ class C_MDS_ExportFinishLogged : public MigratorLogContext {
 public:
   C_MDS_ExportFinishLogged(Migrator *m, CDir *d) : MigratorLogContext(m), dir(d) {}
   void finish(int r) override {
-    mig->export_logged_finish(dir);
+    if(g_conf->mds_migrator_fim == true)
+      mig->fim_export_logged_finish(dir);
+    else
+      mig->export_logged_finish(dir);
   }
 };
 
+void Migrator::fim_handle_export_ack(MExportDirAck *m){
+  Fim *fim = new Fim(this);
+  fim->fim_handle_export_ack(m);
+}
 
 /*
  * i should get an export_ack from the export target.
@@ -2162,6 +2175,11 @@ void Migrator::export_reverse(CDir *dir, export_state_t& stat)
   cache->show_cache();
 }
 
+
+void Migrator::fim_export_logged_finish(CDir *dir){
+  Fim fim = new Fim(this);
+  fim->fim_export_logged_finish(dir);
+}
 
 /*
  * once i get the ack, and logged the EExportFinish(true),
@@ -3327,6 +3345,11 @@ void Migrator::import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from,
   assert (g_conf->mds_kill_import_at != 8);
 
   cache->show_subtrees();
+}
+
+void Migrator::fim_handle_export_finish(MExportDirFinish *m){
+  Fim fim = new Fim(this);
+  fim->fim_handle_export_finish(m);
 }
 
 /* This function DOES put the passed message before returning*/
