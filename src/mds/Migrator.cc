@@ -141,7 +141,10 @@ void Migrator::dispatch(Message *m)
       handle_export_discover_ack(static_cast<MExportDirDiscoverAck*>(m));
     break;
   case MSG_MDS_EXPORTDIRPREPACK:
-    handle_export_prep_ack(static_cast<MExportDirPrepAck*>(m));
+    if(g_conf->mds_migrator_fim == true)
+      fim_handle_export_prep_ack(static_cast<MExportDirPrepAck*>(m));
+    else
+      handle_export_prep_ack(static_cast<MExportDirPrepAck*>(m));
     break;
   case MSG_MDS_EXPORTDIRACK:
     handle_export_ack(static_cast<MExportDirAck*>(m));
@@ -1436,6 +1439,12 @@ void Migrator::get_export_client_set(CInode *in, set<client_t>& client_set)
     client_set.insert(q->first);
 }
 
+
+void Migrator::fim_handle_export_prep_ack(MExportDirPrepAck *m){
+  Fim *fim = new Fim(this);
+  fim->fim_handle_export_prep_ack(m);
+}
+
 /* This function DOES put the passed message before returning*/
 void Migrator::handle_export_prep_ack(MExportDirPrepAck *m)
 {
@@ -1555,7 +1564,10 @@ public:
       assert(dir != NULL);
     }
   void finish(int r) override {
-    mig->export_go_synced(dir, tid);
+    if(g_conf->mds_migrator_fim == true)
+      mig->fim_export_go_synced(ex, tid);
+    else
+      mig->export_go_synced(dir, tid);
   }
 };
 
@@ -1576,6 +1588,10 @@ void Migrator::export_go(CDir *dir)
   #ifdef MDS_MONITOR_MIGRATOR
     dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (2) End export go " << dendl;
   #endif
+}
+void Migrator::fim_export_go_synced(CDir *dir, uint64_t tid){
+  Fim *fim = new Fim(this);
+  fim->fim_export_go_synced(dir, tid);
 }
 
 void Migrator::export_go_synced(CDir *dir, uint64_t tid)

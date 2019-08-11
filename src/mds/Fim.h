@@ -124,6 +124,8 @@ public:
 	void fim_handle_export_discover(MExportDirDiscover *m);
 	void fim_handle_export_discover_ack(MExportDirDiscoverAck *m);
 	void fim_handle_export_prep(MExportDirPrep *m);
+	void fim_handle_export_prep_ack(MExportDirPrepAck *m);
+	void fim_export_go_synced(CDir *dir, uint64_t tid);
 
 private:
 	Migrator *mig;

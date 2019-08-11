@@ -810,10 +810,134 @@ void Fim::fim_handle_export_prep(MExportDirPrep *m){
 
 	// ok!
 	fim_dout(7) << __func__ << "sending export_prep_ack on " << *dir << fim_dendl;
-	fim_dout(7) << __func__ << "Flow:[6] send PrepareACK message" << fim_dendl;
+	fim_dout(7) << __func__ << "Flow:[7] send PrepareACK message" << fim_dendl;
 	mig->mds->send_message(new MExportDirPrepAck(dir->dirfrag(), success, m->get_tid()), m->get_connection());
 
 	assert(g_conf->mds_kill_import_at != 4);
 	// done 
 	m->put();
+}
+
+void Fim::fim_handle_export_prep_ack(MExportDirPrepAck *m){
+	fim_dout(7) << __func__ << "Flow:[8] recv PrepareACK message" << fim_dendl;
+	CDir *dir = mig->cache->get_dirfrag(m->get_dirfrag());
+	mds_rank_t dest(m->get_source().num());
+	utime_t now = ceph_clock_now();
+	assert(dir);
+
+	fim_dout(7) << __func__ << "on " << *dir << fim_dendl;
+
+	mig->mds->hit_export_target(now, dest, -1);
+
+	map<CDir*,Migrator::export_state_t>::iterator it = mig->export_state.find(dir);
+	if (it == mig->export_state.end() || it->second.tid != m->get_tid() || it->second.peer != mds_rank_t(m->get_source().num())) {
+		// export must have aborted.  
+		fim_dout(7) << __func__ << "export must have aborted" << fim_dendl;
+		m->put();
+		return;
+	}
+	assert(it->second.state == EXPORT_PREPPING);
+
+	if (!m->is_success()) {
+		fim_dout(7) << __func__ << "peer couldn't acquire all needed locks or wasn't active, canceling" << fim_dendl;
+		mig->export_try_cancel(dir, false);
+		m->put();
+		return;
+	}
+
+	assert (g_conf->mds_kill_export_at != 5);
+	// send warnings
+	set<CDir*> bounds;
+	mig->cache->get_subtree_bounds(dir, bounds);
+
+	assert(it->second.warning_ack_waiting.empty() || (it->second.warning_ack_waiting.size() == 1 && it->second.warning_ack_waiting.count(MDS_RANK_NONE) > 0));
+	assert(it->second.notify_ack_waiting.empty());
+
+	for (const auto &p : dir->get_replicas()) {
+		if (p.first == it->second.peer) 
+			continue;
+		if (mds->is_cluster_degraded() && !mds->mdsmap->is_clientreplay_or_active_or_stopping(p.first))
+	  		continue;  // only if active
+		it->second.warning_ack_waiting.insert(p.first);
+		it->second.notify_ack_waiting.insert(p.first);  // we'll eventually get a notifyack, too!
+		MExportDirNotify *notify = new MExportDirNotify(dir->dirfrag(), it->second.tid, true, mds_authority_t(mig->mds->get_nodeid(),CDIR_AUTH_UNKNOWN), mds_authority_t(mig->mds->get_nodeid(),it->second.peer));
+
+		for (set<CDir*>::iterator q = bounds.begin(); q != bounds.end(); ++q){
+	  		notify->get_bounds().push_back((*q)->dirfrag());
+		}
+		fim_dout(7) << __func__ << "Flow:[9] send Notify message!" << fim_dendl;
+		mig->mds->send_message_mds(notify, p.first);
+	}
+
+	it->second.state = EXPORT_WARNING;
+
+	assert(g_conf->mds_kill_export_at != 6);
+
+	// nobody to warn?
+	if (it->second.warning_ack_waiting.empty()){
+		fim_dout(7) << __func__ << "start export_go" << fim_dendl;
+		mig->export_go(dir);  // start export.
+	}
+
+	// done.
+	m->put();
+}
+
+void Fim::fim_export_go_synced(CDir *dir, uint64_t tid){
+	fim_dout(7) << __func__ << fim_dendl;
+
+	map<CDir*,Migrator::export_state_t>::iterator it = mig->export_state.find(dir);
+	if (it == mig->export_state.end() || it->second.state == EXPORT_CANCELLING || it->second.tid != tid) {
+		// export must have aborted.  
+		fim_dout(7) << __func__ << "export must have aborted on " << dir << fim_dendl;
+		return;
+	}
+	assert(it->second.state == EXPORT_WARNING);
+	mds_rank_t dest = it->second.peer;
+
+	fim_dout(7) << __func__ << "on dir " << *dir << " to " << dest << fim_dendl;
+
+	mig->cache->show_subtrees();
+
+	it->second.state = EXPORT_EXPORTING;
+	assert(g_conf->mds_kill_export_at != 7);
+
+	assert(dir->is_frozen_tree_root());
+	assert(dir->get_cum_auth_pins() == 0);
+
+	// set ambiguous auth
+	mig->cache->adjust_subtree_auth(dir, mig->mds->get_nodeid(), dest);
+
+	// take away the popularity we're sending.
+	utime_t now = ceph_clock_now();
+	mig->mds->balancer->subtract_export(dir, now);
+
+	// fill export message with cache data
+	MExportDir *req = new MExportDir(dir->dirfrag(), it->second.tid);
+	map<client_t,entity_inst_t> exported_client_map;
+	uint64_t num_exported_inodes = encode_export_dir(req->export_data,
+					      dir,   // recur start point
+					      exported_client_map,
+					      now);
+	::encode(exported_client_map, req->client_map, mig->mds->mdsmap->get_up_features());
+
+	// add bounds to message
+	set<CDir*> bounds;
+	mig->cache->get_subtree_bounds(dir, bounds);
+
+	for (set<CDir*>::iterator p = bounds.begin(); p != bounds.end(); ++p)
+		req->add_export((*p)->dirfrag());
+
+	// send
+	fim_dout(7) << __func__ << "Flow:[9] send Export message" << fim_dendl;
+	mig->mds->send_message_mds(req, dest);
+	assert(g_conf->mds_kill_export_at != 8);
+
+	mig->mds->hit_export_target(now, dest, num_exported_inodes+1);
+
+	// stats
+	if (mig->mds->logger) mig->mds->logger->inc(l_mds_exported);
+	if (mig->mds->logger) mig->mds->logger->inc(l_mds_exported_inodes, num_exported_inodes);
+
+	// mig->cache->show_subtrees();
 }

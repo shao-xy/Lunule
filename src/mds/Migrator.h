@@ -193,10 +193,6 @@ protected:
   void handle_export_prep(MExportDirPrep *m);
   void handle_export_dir(MExportDir *m);
 
-  void fim_handle_export_discover(MExportDirDiscover *m);
-  void fim_handle_export_discover_ack(MExportDirDiscoverAck *m);
-  void fim_handle_export_prep(MExportDirPrep *m);
-
   void import_reverse_discovering(dirfrag_t df);
   void import_reverse_discovered(dirfrag_t df, CInode *diri);
   void import_reverse_prepping(CDir *dir, import_state_t& stat);
@@ -367,6 +363,12 @@ public:
   void fim_export_dir(CDir *dir, mds_rank_t dest);
   void fim_dispatch_export_dir(MDRequestRef& mdr, int count);
   void fim_export_frozen(CDir *dir, uint64_t tid);
+
+  void fim_handle_export_discover(MExportDirDiscover *m);
+  void fim_handle_export_discover_ack(MExportDirDiscoverAck *m);
+  void fim_handle_export_prep(MExportDirPrep *m);
+  void fim_handle_export_prep_ack(MExportDirPrepAck *m);
+  void fim_export_go_synced(CDir *dir, uint64_t tid);
   friend class Fim;
 
 private:
