@@ -788,7 +788,7 @@ void Fim::fim_handle_export_prep(MExportDirPrep *m){
 				fim_dout(7) << __func__ << "we will adjust the import_bounds, and it is NOT empty "<< fim_dendl;
 			}
 
-			mig->cache->adjust_bounded_subtree_auth(dir, import_bounds, pair<int,int>(oldauth, mds->get_nodeid()));
+			mig->cache->adjust_bounded_subtree_auth(dir, import_bounds, pair<int,int>(oldauth, mig->mds->get_nodeid()));
 			mig->cache->verify_subtree_bounds(dir, import_bounds);
 			// freeze.
 			dir->_freeze_tree();
