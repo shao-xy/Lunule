@@ -856,7 +856,7 @@ void Fim::fim_handle_export_prep_ack(MExportDirPrepAck *m){
 	for (const auto &p : dir->get_replicas()) {
 		if (p.first == it->second.peer) 
 			continue;
-		if (mig->smds->is_cluster_degraded() && !mig->mds->mdsmap->is_clientreplay_or_active_or_stopping(p.first))
+		if (mig->mds->is_cluster_degraded() && !mig->mds->mdsmap->is_clientreplay_or_active_or_stopping(p.first))
 	  		continue;  // only if active
 		it->second.warning_ack_waiting.insert(p.first);
 		it->second.notify_ack_waiting.insert(p.first);  // we'll eventually get a notifyack, too!
