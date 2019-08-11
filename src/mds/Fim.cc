@@ -158,7 +158,7 @@ public:
   }
   void finish(int r) override {
     if(g_conf->mds_migrator_fim == true)
-      mig->fim_import_logger_start(df, dir, from, imported_client_map, sseqmap);
+      mig->fim_import_logged_start(df, dir, from, imported_client_map, sseqmap);
     else
       mig->import_logged_start(df, dir, from, imported_client_map, sseqmap);
   }
@@ -1050,9 +1050,7 @@ void Fim::fim_handle_export_dir(MExportDir *m){
 	m->put();
 }
 
-void Fim::fim_import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from,
-         map<client_t,entity_inst_t> &imported_client_map,
-         map<client_t,uint64_t>& sseqmap){
+void Fim::fim_import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from, map<client_t,entity_inst_t> &imported_client_map, map<client_t,uint64_t>& sseqmap){
 	
 	map<dirfrag_t, Migrator::import_state_t>::iterator it = mig->import_state.find(dir->dirfrag());
 	if (it == mig->import_state.end() || it->second.state != IMPORT_LOGGINGSTART) {
@@ -1072,8 +1070,8 @@ void Fim::fim_import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from,
 	mig->mds->server->finish_force_open_sessions(imported_client_map, sseqmap, false);
 	it->second.client_map.swap(imported_client_map);
 
-	map<inodeno_t,map<client_t,Capability::Import> > imported_caps;
-	for (map<CInode*, map<client_t,Capability::Export> >::iterator p = it->second.peer_exports.begin(); p != it->second.peer_exports.end(); ++p) {
+	map<inodeno_t,map<client_t,Capability::Import>> imported_caps;
+	for (map<CInode*, map<client_t,Capability::Export>>::iterator p = it->second.peer_exports.begin(); p != it->second.peer_exports.end(); ++p) {
 		// parameter 'peer' is NONE, delay sending cap import messages to client
 		mig->finish_import_inode_caps(p->first, MDS_RANK_NONE, true, p->second, imported_caps[p->first->ino()]);
 	}
@@ -1086,7 +1084,7 @@ void Fim::fim_import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from,
 
 	MExportDirAck *ack = new MExportDirAck(dir->dirfrag(), it->second.tid);
 	::encode(imported_caps, ack->imported_caps);
-	fim_dout(7) << __func__ << "Flow:[11] send ExportAck message!" << dendl;
+	fim_dout(7) << __func__ << "Flow:[11] send ExportAck message!" << fim_dendl;
 	mig->mds->send_message_mds(ack, from);
 	assert (g_conf->mds_kill_import_at != 8);
 

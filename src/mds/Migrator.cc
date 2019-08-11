@@ -2891,7 +2891,7 @@ public:
   }
   void finish(int r) override {
     if(g_conf->mds_migrator_fim == true)
-      mig->fim_import_logger_start(df, dir, from, imported_client_map, sseqmap);
+      mig->fim_import_logged_start(df, dir, from, imported_client_map, sseqmap);
     else
       mig->import_logged_start(df, dir, from, imported_client_map, sseqmap);
   }

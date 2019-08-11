@@ -370,9 +370,7 @@ public:
   void fim_handle_export_prep_ack(MExportDirPrepAck *m);
   void fim_export_go_synced(CDir *dir, uint64_t tid);
   void fim_handle_export_dir(MExportDir *m);
-  void fim_import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from,
-         map<client_t,entity_inst_t> &imported_client_map,
-         map<client_t,uint64_t>& sseqmap);
+  void fim_import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from, map<client_t,entity_inst_t> &imported_client_map, map<client_t,uint64_t>& sseqmap);
   friend class Fim;
 
 private:
