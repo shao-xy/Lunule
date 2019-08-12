@@ -1158,7 +1158,7 @@ void Fim::fim_handle_export_ack(MExportDirAck *m){
 void Fim::fim_export_logged_finish(CDir *dir){
 	fim_dout(7) << __func__ << "start export_logged_finish." << fim_dendl;
 
-	export_state_t& stat = export_state[dir];
+	Migrator::export_state_t& stat = mig->export_state[dir];
 
 	// send notifies
 	set<CDir*> bounds;

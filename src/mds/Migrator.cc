@@ -2177,7 +2177,7 @@ void Migrator::export_reverse(CDir *dir, export_state_t& stat)
 
 
 void Migrator::fim_export_logged_finish(CDir *dir){
-  Fim fim = new Fim(this);
+  Fim *fim = new Fim(this);
   fim->fim_export_logged_finish(dir);
 }
 
@@ -3348,7 +3348,7 @@ void Migrator::import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from,
 }
 
 void Migrator::fim_handle_export_finish(MExportDirFinish *m){
-  Fim fim = new Fim(this);
+  Fim *fim = new Fim(this);
   fim->fim_handle_export_finish(m);
 }
 
