@@ -1112,7 +1112,7 @@ void Fim::fim_handle_export_ack(MExportDirAck *m){
 	assert(dir->is_frozen_tree_root());  // i'm exporting!
 
 	// yay!
-	fim_dout(7) << "on dir " << *dir << dendl;
+	fim_dout(7) << "on dir " << *dir << fim_dendl;
 
 	mig->mds->hit_export_target(now, dest, -1);
 
@@ -1225,7 +1225,7 @@ void Fim::fim_export_finish(CDir *dir){
 
 	// unpin bounds
 	set<CDir*> bounds;
-	mig->ache->get_subtree_bounds(dir, bounds);
+	mig->cache->get_subtree_bounds(dir, bounds);
 	for (set<CDir*>::iterator p = bounds.begin(); p != bounds.end(); ++p) {
 		CDir *bd = *p;
 		bd->put(CDir::PIN_EXPORTBOUND);
@@ -1252,7 +1252,7 @@ void Fim::fim_export_finish(CDir *dir){
 	}
 
 	// no more auth subtree? clear scatter dirty
-	if (!dir->get_inode()->is_auth() && !dir->get_inode()->has_subtree_root_dirfrag(mds->get_nodeid())) {
+	if (!dir->get_inode()->is_auth() && !dir->get_inode()->has_subtree_root_dirfrag(mig->mds->get_nodeid())) {
 		dir->get_inode()->clear_scatter_dirty();
 		// wake up scatter_nudge waiters
 		dir->get_inode()->take_waiting(CInode::WAIT_ANY_MASK, finished);
@@ -1263,13 +1263,13 @@ void Fim::fim_export_finish(CDir *dir){
 
 	MutationRef mut = it->second.mut;
 	// remove from exporting list, clean up state
-	export_state.erase(it);
+	mig->export_state.erase(it);
 	dir->state_clear(CDir::STATE_EXPORTING);
 
 	mig->cache->show_subtrees();
-	audit();
+	mig->audit();
 
-	cache->trim(num_dentries); // try trimming exported dentries
+	mig->cache->trim(num_dentries); // try trimming exported dentries
 
 	// send pending import_maps?
 	mig->mds->mdcache->maybe_send_pending_resolves();
