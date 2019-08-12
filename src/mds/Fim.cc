@@ -1285,7 +1285,7 @@ void Fim::fim_export_finish(CDir *dir){
 
 void Fim::fim_handle_export_finish(MExportDirFinish *m){
 	fim_dout(7) << __func__ << "Flow:[14] recv ExportFinish message!" << fim_dendl;
-	CDir *dir = cache->get_dirfrag(m->get_dirfrag());
+	CDir *dir = mig->cache->get_dirfrag(m->get_dirfrag());
 	assert(dir);
 	fim_dout(7) << "handle_export_finish on " << *dir << (m->is_last() ? " last" : "") << fim_dendl;
 
