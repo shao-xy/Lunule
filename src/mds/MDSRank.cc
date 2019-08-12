@@ -839,6 +839,12 @@ bool MDSRank::is_stale_message(Message *m) const
   // from bad mds?
   if (m->get_source().is_mds()) {
     mds_rank_t from = mds_rank_t(m->get_source().num());
+    dout(5) << __func__ << " Check bad: " << dendl;
+    dout(5) << __func__ << "   mdsmap->have_inst: " << (mdsmap->have_inst(from) ? "yes" : "no") << dendl;
+    dout(5) << __func__ << "   mdsmap->check_source: " << (mdsmap->get_inst(from) != m->get_source_inst() ? "yes" : "no") << dendl;
+    dout(5) << __func__ << "     mdsmap->get_inst: " << mdsmap->get_inst(from) << dendl;
+    dout(5) << __func__ << "     message->get_source_inst: " << m->get_source_inst() << dendl;
+    dout(5) << __func__ << "   mdsmap->is_down: " << (mdsmap->is_down(from) ? "yes" : "no") << dendl;
     if (!mdsmap->have_inst(from) ||
 	mdsmap->get_inst(from) != m->get_source_inst() ||
 	mdsmap->is_down(from)) {
@@ -900,7 +906,9 @@ void MDSRank::send_message_mds(Message *m, mds_rank_t mds)
   const entity_inst_t my_entity = mdsmap->get_inst(whoami);
 
   if (target_entity.addr.is_same_host(my_entity.addr)) {
+    m->get_header().src = messenger->get_myname();
     dout(10) << __func__ << " [SCALING-MDS] Same host detected. Communicate through IPC." << dendl;
+    dout(10) << __func__ << " [SCALING-MDS]   Message src now: " << m->get_source() << dendl;
     if (ipc_msgr->send_message_mds(m, mds))
       return;
   }

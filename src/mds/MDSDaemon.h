@@ -36,6 +36,8 @@ class Message;
 class Messenger;
 class MonClient;
 
+class IPCMessenger;
+
 class MDSDaemon : public Dispatcher, public md_config_obs_t {
  public:
   /* Global MDS lock: every time someone takes this, they must
@@ -166,6 +168,8 @@ protected:
 
 private:
     mono_time starttime = mono_clock::zero();
+
+    friend class IPCMessenger;
 };
 
 

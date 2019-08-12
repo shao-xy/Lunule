@@ -3102,6 +3102,7 @@ void MDCache::handle_resolve(MMDSResolve *m)
 {
   dout(7) << "handle_resolve from " << m->get_source() << dendl;
   mds_rank_t from = mds_rank_t(m->get_source().num());
+  dout(7) << __func__ << " source from " << from << dendl;
 
   if (mds->get_state() < MDSMap::STATE_RESOLVE) {
     if (mds->get_want_state() == CEPH_MDS_STATE_RESOLVE) {

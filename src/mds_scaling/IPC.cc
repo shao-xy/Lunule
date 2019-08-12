@@ -1,21 +1,55 @@
+#include <sstream>
+#include <cstdlib>
+#include <cstring>
 #include <memory.h>
+#include <errno.h>
 
 #include "mds_scaling/IPC.h"
 
 #include "common/debug.h"
 
+#include "mds/MDSDaemon.h"
 #include "mds/MDSRank.h"
+
+#include "msg/async/AsyncMessenger.h"
 
 #define dout_context g_ceph_context
 #define dout_subsys ceph_subsys_mds
 
 #define IPC_KEY_BASE 10000
+#define IPC_LISTEN_KEY_BASE 9900
 
 struct ipcmsg_t {
 	long mtype;
 	size_t msize; // message size. plus 1 if has more chunks
 	char mtext[IPC_DEFAULT_MSG_SIZE];
 };
+
+static inline void show_memory(char * buf, int len)
+{
+	stringstream ss;
+	ss << std::hex;
+	for (int i = 0; i < len; i++) {
+		char c = *buf++;
+		ss << (unsigned int)(unsigned char)c << ' ';
+	}
+	dout(20) << __func__ << " " << ss.str() << dendl;
+}
+
+static inline void show_bl(bufferlist& bl)
+{
+	// clone new
+	bufferlist blist = bl;
+	blist.rebuild();
+	list<bufferptr> bufptrlist = blist.buffers();
+	assert(bufptrlist.size() == 1);
+	list<bufferptr>::iterator pbi = bufptrlist.begin();
+	char * cpbi = pbi->c_str();
+	unsigned dbgtotal = blist.length();
+
+	dout(20) << __func__ << " blist content: " << dendl;
+	show_memory(cpbi, dbgtotal);
+}
 
 #undef dout_prefix
 #define dout_prefix *_dout << "mds." << msgr->get_nodeid() << ".ipc_worker[listening to " << src << "] "
@@ -29,6 +63,8 @@ int IPCWorker::do_recvmsg(char * buf, size_t len)
 {
 	if (!buf)	return -1;
 	if (!len)	return 0;
+
+	char * const orig_buf = buf;
 
 	size_t msg_size = msgr->get_msg_size();
 
@@ -60,11 +96,15 @@ int IPCWorker::do_recvmsg(char * buf, size_t len)
 			more_than_expected = true;
 			// only keeps expected size
 			memcpy(buf, msgbuf.mtext, left);
+			dout(20) << __func__ << "  Message fragment:" << dendl;
+			show_memory(buf, left);
 			left = 0;
 		}
 		else {
-			dout(30) << __func__ << " Received chunk size = " << recved << dendl;
+			dout(20) << __func__ << " Received chunk size = " << recved << dendl;
 			memcpy(buf, msgbuf.mtext, recved);
+			dout(20) << __func__ << "  Message fragment:" << dendl;
+			show_memory(buf, recved);
 			buf += recved;
 			left -= msg_size;
 		}
@@ -83,16 +123,51 @@ int IPCWorker::do_recvmsg(char * buf, size_t len)
 
 			if (msgbuf.msize <= msg_size)
 				has_more_msg = false;
+
+			dout(20) << __func__ << "  Dropped fragment:" << dendl;
+			show_memory(msgbuf.mtext, has_more_msg ? msg_size : msgbuf.msize);
 		}
 
 		return 0;
 	}
 
 	dout(20) << __func__ << " Totally received: " << recved_total << " (expected: " << len << ")" << dendl;
+
+	dout(20) << __func__ << " IPC message in hex:" << dendl;
+	show_memory(orig_buf, len);
 	
 	return recved_total;
 }
 
+static void alloc_aligned_buffer(bufferlist& data, unsigned len, unsigned off)
+{
+  // create a buffer to read into that matches the data alignment
+  unsigned left = len;
+  if (off & ~CEPH_PAGE_MASK) {
+    // head
+    unsigned head = 0;
+    head = MIN(CEPH_PAGE_SIZE - (off & ~CEPH_PAGE_MASK), left);
+    data.push_back(buffer::create(head));
+    left -= head;
+  }
+  unsigned middle = left & CEPH_PAGE_MASK;
+  if (middle > 0) {
+    data.push_back(buffer::create_page_aligned(middle));
+    left -= middle;
+  }
+  if (left) {
+    data.push_back(buffer::create(left));
+  }
+}
+
+/**
+ * \brief Try to receive a piece of message from IPC tunnel
+ * \details Invoked in IPC Receive worker loop.
+ *
+ * @param[in] empty
+ * @param[out] empty
+ * @return Pointer to the message got, or NULL if failed.
+ **/
 Message * IPCWorker::try_recvmsg()
 {
 	Mutex::Locker recv_lock(mutex);
@@ -124,9 +199,43 @@ Message * IPCWorker::try_recvmsg()
 		bufferptr bp = buffer::create(message_size);
 		if (do_recvmsg(bp.c_str(), message_size) < (int)message_size)	return NULL;
 		message_body.push_back(std::move(bp));
+
+		show_bl(message_body);
+
 		message_body.splice(0, header.front_len, &front);
 		message_body.splice(0, header.middle_len, &middle);
-		data.claim(message_body);
+
+		message_body.splice(0, header.data_len, &data);
+		
+		if (message_body.length() > 0)	{
+			dout(1) << __func__ << " Warning: still data left in IPC message, length: " << message_body.length() << dendl;
+		}
+		/*
+		unsigned data_len = le32_to_cpu(header.data_len);
+		unsigned data_off = le32_to_cpu(header.data_off);
+		unsigned offset = 0;
+		unsigned left = data_len;
+
+		bufferlist newbuf;
+
+		if (message_body.length() != header.data_len) {
+			dout(1) << __func__ << " Data length not equal described in header, dropping." << dendl;
+			return NULL;
+		}
+
+		// set up data bufferlist
+	  	alloc_aligned_buffer(newbuf, data_len, data_off);
+		bufferlist::iterator blp = newbuf.begin();
+		while (left) {
+			bufferptr bp = blp.get_current_ptr();
+			int read = MIN(bp.length(), left);
+			message_body.copy(offset, read, bp.c_str());
+			blp.advance(read);
+			data.append(bp, 0, read);
+			offset += read;
+			left -= read;
+		}
+		*/
 	}
 	
   	dout(20) << "reader got " << front.length() << " + " << middle.length() << " + " << data.length()
@@ -136,7 +245,15 @@ Message * IPCWorker::try_recvmsg()
 	r = do_recvmsg((char*)&footer, sizeof(footer));
 	if (r < (int)sizeof(footer))	return NULL;	// Here if we receive more information(i.e. r=0), still consider failed.
 
-	return decode_message(g_ceph_context, 0, header, footer, front, middle, data, NULL);
+	Connection * conn = msgr->get_conn(src);
+	Message * msg = decode_message(g_ceph_context, 0, header, footer, front, middle, data, conn);
+	if (msg) {
+		dout(5) << "decode message success, type: " << msg->get_type() << dendl;
+	}
+	else {
+		dout(5) << "decode message failed" << dendl;
+	}
+	return msg;
 }
 
 void * IPCWorker::entry() {
@@ -151,10 +268,60 @@ void * IPCWorker::entry() {
 
 	// Never stops. Killed by IPCMessenger destructor.
 	while (true) {
+		dout(20) << "IPCWorker: Blocking for new message." << dendl;
 		Message * new_msg = try_recvmsg();
 		if (new_msg) {
-			MDSRankDispatcher * rank_disp = static_cast<MDSRankDispatcher *>(msgr->get_rank());
-			rank_disp->ms_dispatch(new_msg);
+			//MDSRankDispatcher * rank_disp = static_cast<MDSRankDispatcher *>(msgr->get_rank());
+			//{
+			//	Mutex::Locker l(rank_disp->mds_lock);
+			//	rank_disp->ms_dispatch(new_msg);
+			//}
+			msgr->ms_deliver(new_msg);
+		}
+	}
+
+	// Fake return.
+	return NULL;
+}
+
+#undef dout_prefix
+#define dout_prefix *_dout << "mds." << msgr->get_nodeid() << ".ipc_processor "
+
+mds_rank_t IPCProcessor::accept(int msg_id)
+{
+	ipcmsg_t msgbuf;
+	if (msgrcv(msg_id, &msgbuf, sizeof(ipcmsg_t) - sizeof(long), 0, 0) < 0) {
+		dout(1) << "IPCProcessor: receive message failed (" << strerror(errno) << ")" << dendl;
+		return -1;
+	}
+	
+	assert(msgbuf.mtype == IPC_CONNECTION_MSG_TYPE);
+	mds_rank_t rank = (mds_rank_t)atoi(msgbuf.mtext);
+
+	dout(20) << __func__ << " Receive connection request for mds rank " << rank << dendl;
+	return rank;
+}
+
+void * IPCProcessor::entry()
+{
+	assert(msgr);
+	int ipckey = IPC_get_listenkey(msgr->get_nodeid());
+
+	int msg_id = msgget(ipckey, IPC_CREAT | 0666);
+	if (msg_id == -1) {
+		dout(5) << "Fatal: Create IPC pipe failed." << dendl;
+		// TODO: Here we need to give out information to admin. However we do not do this now.
+		return NULL;
+	}
+
+	mds_rank_t target_mds;
+	// Never stops. Killed by IPCMessenger destructor.
+	while (true) {
+		dout(20) << "IPCProcessor: Blocking for new message." << dendl;
+		if ((target_mds = accept(msg_id)) != -1) {
+			if (msgr->ensure_entity_exist(target_mds) == -1) {
+				dout(1) << __func__ << " FATAL: Cannot create socket for target " << target_mds << dendl;
+			}
 		}
 	}
 
@@ -165,8 +332,13 @@ void * IPCWorker::entry() {
 #undef dout_prefix
 #define dout_prefix *_dout << "mds." << mdsrank->whoami << ".ipc "
 	
-bool IPCMessenger::do_sendmsg(int msg_id, void * buffer, size_t len)
+bool IPCMessenger::do_sendmsg(int msg_id, char * buffer, size_t len)
 {
+	dout(20) << __func__ << " IPC [msg_id = " << msg_id << "] length = " << len << dendl;
+
+	dout(20) << __func__ << " IPC message in hex:" << dendl;
+	show_memory(buffer, len);
+
 	assert(msg_size == IPC_DEFAULT_MSG_SIZE);
 	if (len <= 0)	return false;
 
@@ -178,22 +350,36 @@ bool IPCMessenger::do_sendmsg(int msg_id, void * buffer, size_t len)
 		msgbuf.msize = msg_size + 1;
 		memcpy(&msgbuf.mtext, buffer, msg_size);
 		len -= msg_size;
+		buffer += msg_size;
 
-		dout(20) << __func__ << " IPC: send size = " << msg_size << ", left: " << len << dendl;
+		dout(20) << __func__ << " IPC (msg_id = " << msg_id << ", trunk size= " << msglen
+				 << "): send size = " << msg_size << ", left: " << len << dendl;
+		
+		dout(20) << __func__ << "  Message fragment:" << dendl;
+		show_memory(buffer, msg_size);
 
-		if (msgsnd(msg_id, &msgbuf, msglen, 0) < 0) {
+		//if (msgsnd(msg_id, &msgbuf, msglen, 0) < 0) {
+		int ret = msgsnd(msg_id, &msgbuf, msglen, 0);
+		if (ret < 0) {
 			// something bad happens
-			dout(1) << __func__ << " IPC failed for this chunk." << dendl;
+			//dout(1) << __func__ << " IPC failed for this chunk." << dendl;
+			dout(1) << __func__ << " IPC failed for this chunk. (return value: " << ret << ", ERRNO: " << strerror(errno) << ")" << dendl;
 			return false;
 		}
 	}
 
 	msgbuf.msize = len;
 	memcpy(&msgbuf.mtext, buffer, len);
-	dout(20) << __func__ << " IPC: send size = " << msg_size << ", no more left." << dendl;
-	if (msgsnd(msg_id, &msgbuf, msglen, 0) < 0) {
+	dout(20) << __func__ << " IPC (msg_id = " << msg_id << ", trunk size= " << msglen
+			 << "): send size = " << len << ", no more left." << dendl;
+		
+	dout(20) << __func__ << "  Message fragment:" << dendl;
+	show_memory(buffer, len);
+
+	int ret = msgsnd(msg_id, &msgbuf, msglen, 0);
+	if (ret < 0) {
 		// something bad happens
-		dout(1) << __func__ << " IPC failed for this chunk." << dendl;
+		dout(1) << __func__ << " IPC failed for this chunk. (return value: " << ret << ", ERRNO: " << strerror(errno) << ")" << dendl;
 		return false;
 	}
 	return true;
@@ -202,14 +388,38 @@ bool IPCMessenger::do_sendmsg(int msg_id, void * buffer, size_t len)
 bool IPCMessenger::do_sendmsg_mds(int msg_id, const ceph_msg_header& header,
 						const ceph_msg_footer& footer, bufferlist blist)
 {
+	Mutex::Locker l(msgr_mutex);
+
+	dout(20) << __func__ << " msg_id = " << msg_id << dendl;
+
+	dout(20) << __func__ << " IPC sender prepare envelope type =  " << header.type
+    	<< " src " << entity_name_t(header.src)
+    	<< " front=" << header.front_len
+    	<< " middle=" << header.middle_len
+		<< " data=" << header.data_len
+		<< " off " << header.data_off
+		<< dendl;
+
 	// send header
-	if (!do_sendmsg(msg_id, (char *)&header, sizeof(ceph_msg_header)))	return false;
+	if (!do_sendmsg(msg_id, (char *)&header, sizeof(ceph_msg_header))) {
+		dout(1) << __func__ << " Failed to send message header (size: " << sizeof(ceph_msg_header) << ")" << dendl;
+		return false;
+	}
+
+	show_bl(blist);
 
 	// payload (front+data)
 	list<bufferptr>::const_iterator pb = blist.buffers().begin();
 	unsigned b_off = 0;  // carry-over buffer offset, if any
 	unsigned bl_pos = 0; // blist pos
 	unsigned left = blist.length();
+	unsigned total = left;
+
+	dout(20) << __func__ <<  " blist size = " << left << dendl;
+
+	bufferptr combined = buffer::create(total);
+	char * const target_buffer = combined.c_str();
+	char * current_pos = target_buffer;
 
 	while (left > 0) {
 		unsigned donow = MIN(left, pb->length() - b_off);
@@ -224,7 +434,9 @@ bool IPCMessenger::do_sendmsg_mds(int msg_id, const ceph_msg_header& header,
 			<< " writing " << donow 
 			<< dendl;
 
-		if (!do_sendmsg(msg_id, (void*)(pb->c_str() + b_off), donow))	return false;
+		//if (!do_sendmsg(msg_id, (void*)(pb->c_str() + b_off), donow))	return false;
+		memcpy(current_pos, (void*)(pb->c_str() + b_off), donow);
+		current_pos += donow;
 
 		assert(left >= donow);
 		left -= donow;
@@ -239,17 +451,24 @@ bool IPCMessenger::do_sendmsg_mds(int msg_id, const ceph_msg_header& header,
 	}
 	assert(left == 0);
 
+	if (!do_sendmsg(msg_id, target_buffer, total))	return false;
+
 	// send footer
 	return do_sendmsg(msg_id, (char *)&footer, sizeof(ceph_msg_footer));
 }
 
 IPCMessenger::IPCMessenger(MDSRank *mdsrank)
-	: mdsrank(mdsrank), msg_size(IPC_DEFAULT_MSG_SIZE)
+	: mdsrank(mdsrank), processor(NULL),
+	msgr_mutex("IPCMessenger(" + std::to_string(mdsrank->get_nodeid()) + ")"),
+	msg_size(IPC_DEFAULT_MSG_SIZE)
 {
 	if (!mdsrank) {
 		dout(10) << "NULL MDSRank given. Suicide." << dendl;
 		ceph_abort();
 	}
+
+	processor = new IPCProcessor(this);
+	processor->create("IPCProcessor");
 }
 
 IPCMessenger::~IPCMessenger()
@@ -258,13 +477,45 @@ IPCMessenger::~IPCMessenger()
 	for (IPCWorker * worker : workers) {
 		assert(!worker->am_self());
 		Mutex::Locker l(worker->mutex);
-		worker->kill(9);
+		worker->kill(SIGKILL);
 	}
+	processor->kill(SIGKILL);
 }
 
-bool IPCMessenger::create_entity(mds_rank_t target)
+int IPCMessenger::create_entity(mds_rank_t target)
 {
-	int my_rank = mdsrank->get_nodeid();
+	assert(msgr_mutex.is_locked());
+	dout(20) << __func__ << " target: " << target << dendl;
+
+	mds_rank_t my_rank = mdsrank->get_nodeid();
+	
+	if (get_connected_msg_id(target) != -1) {
+		// already exists, abort
+		dout(20) << __func__ << " target already exists." << dendl;
+		return false;
+	}
+
+	// ensure that target listen to us
+	dout(20) << "Create handshape socket for rank " << target << " and acquire for listening" << dendl;
+	int ipc_connect_key = IPC_get_listenkey(target);
+	int msg_connect_id = msgget(ipc_connect_key, IPC_CREAT | 0666);
+	if (msg_connect_id == -1) {
+		dout(5) << "Create handshape socket failed (ERRNO: " << strerror(errno) << dendl;
+		return false;
+	}
+	ipcmsg_t msgbuf;
+	memset(&msgbuf, 0, sizeof(ipcmsg_t));
+	msgbuf.mtype = IPC_CONNECTION_MSG_TYPE;
+	sprintf(msgbuf.mtext, "%d", my_rank);
+	if (msgsnd(msg_connect_id, &msgbuf, sizeof(ipcmsg_t) - sizeof(long), 0) < 0) {
+		dout(5) << "Create handshape socket failed (ERRNO: " << strerror(errno) << dendl;
+		return false;
+	}
+	// No wait here.
+	// If listener is faster, then its IPCWorker will be blocked until the messages are sent.
+	// If we are faster, messages will remain in the message queue. We could just hope 
+	// listener will soon receive. If the queue is full, our sending thread will be blocked.
+
 	// send tunnel
 	int ipckey = IPC_getkey(my_rank, target);
 	int msg_id = msgget(ipckey, IPC_CREAT | 0666);
@@ -272,19 +523,20 @@ bool IPCMessenger::create_entity(mds_rank_t target)
 		dout(5) << "Create IPC pipe failed, returned to normal network stack." << dendl;
 		return false;
 	}
+	dout(20) << __func__ << "Get IPC Message Queue ID: " << msg_id << dendl;
 	existing.push_back(IPC_entity_t{target, msg_id});
 	
-	// receive tunnel
 	IPCWorker * new_worker = new IPCWorker(this, target);
 	string thrd_name = "IPCWorker(" + std::to_string(target) + ")";
 	new_worker->create(thrd_name.c_str());
 	workers.push_back(new_worker);
 
-	return true;
+	return msg_id;
 }
 
 int IPCMessenger::get_connected_msg_id(mds_rank_t mds)
 {
+	assert(msgr_mutex.is_locked());
 	int msg_id = -1;
 	for (vector<IPC_entity_t>::iterator it = existing.begin();
 		 it != existing.end(); it++) {
@@ -302,14 +554,22 @@ mds_rank_t IPCMessenger::get_nodeid() {
 
 bool IPCMessenger::send_message_mds(Message * m, mds_rank_t target)
 {
-	int msg_id = get_connected_msg_id(target);
-	if (msg_id == -1 && !create_entity(target)) { // not found
-		return false;
-	}
+	dout(20) << __func__ << " target = " << target << ", Message type: " << m->get_type() << dendl;
+	int msg_id = ensure_entity_exist(target);
 
+	// encode message
+	m->set_connection(NULL);
+	m->encode(0, 0);
+	
 	// prepare everything
 	const ceph_msg_header& header = m->get_header();
 	const ceph_msg_footer& footer = m->get_footer();
+
+	dout(20) << __func__ << "  merging bufferlists:"
+			 << " payload size: " << m->get_payload().length()
+			 << " middle size: " << m->get_middle().length()
+			 << " data size: " << m->get_data().length()
+			 << dendl;
 
 	bufferlist blist = m->get_payload();
 	blist.append(m->get_middle());
@@ -319,8 +579,50 @@ bool IPCMessenger::send_message_mds(Message * m, mds_rank_t target)
 	return do_sendmsg_mds(msg_id, header, footer, blist);
 }
 
-int IPC_getkey(int from, int to)
+int IPCMessenger::ensure_entity_exist(mds_rank_t mds)
+{
+	dout(20) << __func__ << " target: " << mds << dendl;
+	Mutex::Locker l(msgr_mutex);
+	int msg_id = get_connected_msg_id(mds);
+	if (msg_id == -1)
+		return create_entity(mds);
+	else
+		return msg_id;
+}
+
+void IPCMessenger::ms_deliver(Message * m)
+{
+	assert(mdsrank->mds_daemon);
+	mdsrank->mds_daemon->ms_dispatch(m);
+}
+
+Connection * IPCMessenger::get_conn(mds_rank_t target) {
+	// receive tunnel
+	Connection * conn = static_cast<AsyncMessenger*>(mdsrank->messenger)->lookup_conn(mdsrank->mdsmap->get_addr(target)).get();
+	if (!conn) {
+		dout(1) << __func__ << " Warning: cannot find connection for target " << target << " in mdsmap. Wait for 5 seconds." << dendl;
+		
+		utime_t t;
+		t.set_from_double(5.0);	// Wait for 5 seconds in case new connection may be created
+		t.sleep();
+
+		conn = static_cast<AsyncMessenger*>(mdsrank->messenger)->lookup_conn(mdsrank->mdsmap->get_addr(target)).get();
+
+		if (!conn) {
+			dout(1) << __func__ << "  Still cannot found after 5 seconds. Not found." << dendl;
+		}
+	}
+	return conn;
+}
+
+int IPC_getkey(mds_rank_t from, mds_rank_t to)
 {
 	if (from < 0 || from > 99 || to < 0 || to > 99)	return -1;
 	return IPC_KEY_BASE + 100 * from + to;
+}
+
+int IPC_get_listenkey(mds_rank_t mds) 
+{
+	assert(mds < 100);
+	return IPC_LISTEN_KEY_BASE + mds;
 }

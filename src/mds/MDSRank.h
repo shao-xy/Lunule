@@ -118,7 +118,9 @@ class Finisher;
 class MMDSMap;
 class ScrubStack;
 
+class MDSDaemon;
 class IPCMessenger;
+class IPCWorker;
 
 /**
  * The public part of this class's interface is what's exposed to all
@@ -528,6 +530,14 @@ class MDSRank {
 
 private:
     mono_time starttime = mono_clock::zero();
+
+
+private:
+    // Only for access in IPCWorker thread
+    friend class IPCWorker;
+    MDSDaemon * mds_daemon;
+public:
+    void set_daemon(MDSDaemon * daemon) { this->mds_daemon = daemon; }
 };
 
 /* This expects to be given a reference which it is responsible for.

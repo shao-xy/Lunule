@@ -961,6 +961,7 @@ void MDSDaemon::handle_mds_map(MMDSMap *m)
           timer, beacon, mdsmap, messenger, monc,
           new FunctionContext([this](int r){respawn();}),
           new FunctionContext([this](int r){suicide();}));
+      mds_rank->set_daemon(this);
       dout(10) <<  __func__ << ": initializing MDS rank "
                << mds_rank->get_nodeid() << dendl;
       mds_rank->init();
