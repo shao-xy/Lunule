@@ -33,7 +33,7 @@ static inline void show_memory(char * buf, int len)
 		char c = *buf++;
 		ss << (unsigned int)(unsigned char)c << ' ';
 	}
-	dout(20) << __func__ << " " << ss.str() << dendl;
+	dout(30) << __func__ << " " << ss.str() << dendl;
 }
 
 static inline void show_bl(bufferlist& bl)
@@ -47,7 +47,7 @@ static inline void show_bl(bufferlist& bl)
 	char * cpbi = pbi->c_str();
 	unsigned dbgtotal = blist.length();
 
-	dout(20) << __func__ << " blist content: " << dendl;
+	dout(30) << __func__ << " blist content: " << dendl;
 	show_memory(cpbi, dbgtotal);
 }
 
