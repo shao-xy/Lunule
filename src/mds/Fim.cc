@@ -401,7 +401,7 @@ void Fim::fim_handle_export_discover(MExportDirDiscover *m){
 			m->put();
 			return;
 		}
-		assert(it->second.state != IMPORT_DISCOVERING);
+		assert(it->second.state == IMPORT_DISCOVERING);
 		p_state = &it->second;
 	}
 
