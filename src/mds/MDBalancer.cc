@@ -39,7 +39,9 @@ using std::vector;
 #include "common/config.h"
 #include "common/errno.h"
 
-#define MDS_MONITOR
+//#define MDS_MONITOR
+#define MDS_COLDFIRST_BALANCER
+
 
 #define dout_context g_ceph_context
 #define dout_subsys ceph_subsys_mds
@@ -945,7 +947,9 @@ void MDBalancer::try_rebalance(balance_state_t& state)
     if (im->get_inode()->is_stray()) continue;
 
     double pop = im->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
-
+    #ifdef MDS_COLDFIRST_BALANCER
+    
+    #endif
     #ifdef MDS_MONITOR
     dout(7) << " MDS_MONITOR " << __func__ << " (2) Dir " << *im << " pop " << pop <<dendl;
     #endif
@@ -1091,7 +1095,13 @@ void MDBalancer::try_rebalance(balance_state_t& state)
 	 pot != candidates.end();
 	 ++pot) {
       if ((*pot)->get_inode()->is_stray()) continue;
+
+      #ifdef MDS_COLDFIRST_BALANCER
+      find_exports_coldfirst(*pot, amount, exports, have, already_exporting);
+      #elif
       find_exports(*pot, amount, exports, have, already_exporting);
+      #endif
+      
       if (have > amount-MIN_OFFLOAD)
 	break;
     }
@@ -1116,6 +1126,171 @@ void MDBalancer::try_rebalance(balance_state_t& state)
   dout(5) << "rebalance done" << dendl;
   mds->mdcache->show_subtrees();
 }
+
+#ifdef MDS_COLDFIRST_BALANCER
+void MDBalancer::find_exports_coldfirst(CDir *dir,
+                              double amount,
+                              list<CDir*>& exports,
+                              double& have,
+                              set<CDir*>& already_exporting)
+{
+  double need = amount - have;
+  if (need < amount * g_conf->mds_bal_min_start)
+    return;   // good enough!
+  double needmax = need * g_conf->mds_bal_need_max;
+  double needmin = need * g_conf->mds_bal_need_min;
+  double midchunk = need * g_conf->mds_bal_midchunk;
+  double minchunk = need * g_conf->mds_bal_minchunk;
+
+  list<CDir*> bigger_rep, bigger_unrep;
+  multimap<double, CDir*> smaller;
+  multimap<double, CDir*> verycold;
+  int coldcount = 0;
+
+  double dir_pop = dir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
+  dout(7) << " find_exports in " << dir_pop << " " << *dir << " need " << need << " (" << needmin << " - " << needmax << ")" << dendl;
+  #ifdef MDS_MONITOR
+  dout(7) << " MDS_MONITOR " << __func__ << " needmax " << needmax << " needmin " << needmin << " midchunk " << midchunk << " minchunk " << minchunk << dendl;
+  dout(7) << " MDS_MONITOR " << __func__ << "(1) Find DIR " << *dir << " pop " << dir_pop << 
+  " amount " << amount << " have " << have << " need " << need << dendl;
+  #endif  
+
+  double subdir_sum = 0;
+  for (auto it = dir->begin(); it != dir->end(); ++it) {
+    CInode *in = it->second->get_linkage()->get_inode();
+    if (!in) continue;
+    if (!in->is_dir()) continue;
+
+    list<CDir*> dfls;
+    in->get_dirfrags(dfls);
+    for (list<CDir*>::iterator p = dfls.begin();
+   p != dfls.end();
+   ++p) {
+      CDir *subdir = *p;
+
+      if (!subdir->is_auth()) continue;
+      if (already_exporting.count(subdir)) continue;
+
+      if (subdir->is_frozen()) continue;  // can't export this right now!
+
+      // how popular?
+      double pop = subdir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
+      subdir_sum += pop;
+      dout(15) << "   subdir pop " << pop << " " << *subdir << dendl;
+
+
+      if (pop < minchunk) {
+      verycold.insert(pair<double,CDir*>(pop, subdir));
+      coldcount++;
+      dout(1) << " MDS_COLD " << __func__ << "find a clod " << *((*it).second) << " pop " << (*it).first << dendl;
+      }
+
+      // lucky find?
+      /*if (pop > needmin && pop < needmax) {
+        #ifdef MDS_MONITOR
+  dout(7) << " MDS_MONITOR " << __func__ << "(2) Lucky Find DIR " << *subdir << " pop " << pop << 
+  " needmin~needmax " << needmin << " ~ " << needmax << " have " << have << " need " << need << dendl;
+  #endif 
+  exports.push_back(subdir);
+  already_exporting.insert(subdir);
+  have += pop;
+  return;
+      }*/
+
+      if (pop > need) {
+  if (subdir->is_rep())
+    bigger_rep.push_back(subdir);
+  else
+    bigger_unrep.push_back(subdir);
+      } else
+  smaller.insert(pair<double,CDir*>(pop, subdir));
+    }
+  }
+  dout(15) << "   sum " << subdir_sum << " / " << dir_pop << dendl;
+
+  if(coldcount>=10){
+  dout(1) << " MDS_COLD " << __func__ << "start cold balance" <<denl;
+    for (it = verycold.rbegin();
+       it != verycold.rend();
+       ++it) {
+    exports.push_back((*it).second);
+    already_exporting.insert((*it).second);
+    have += (*it).first;
+    }
+    return;
+  }else{
+    dout(1) << " MDS_COLD " << __func__ << "unable to start cold balance" <<denl;
+  }
+
+
+  // grab some sufficiently big small items
+  multimap<double,CDir*>::reverse_iterator it;
+  for (it = smaller.rbegin();
+       it != smaller.rend();
+       ++it) {
+
+    #ifdef MDS_MONITOR
+    dout(7) << " MDS_MONITOR " << __func__ << "(3) See smaller DIR " << *((*it).second) << " pop " << (*it).first << dendl;
+    #endif
+
+    if ((*it).first < midchunk)
+      break;  // try later
+
+    dout(7) << "   taking smaller " << *(*it).second << dendl;
+    #ifdef MDS_MONITOR
+    dout(7) << " MDS_MONITOR " << __func__ << "(3) taking smaller DIR " << *((*it).second) << " pop " << (*it).first << dendl;
+    #endif
+    exports.push_back((*it).second);
+    already_exporting.insert((*it).second);
+    have += (*it).first;
+    if (have > needmin)
+      return;
+  }
+
+  // apprently not enough; drill deeper into the hierarchy (if non-replicated)
+  for (list<CDir*>::iterator it = bigger_unrep.begin();
+       it != bigger_unrep.end();
+       ++it) {
+    #ifdef MDS_MONITOR
+  dout(7) << " MDS_MONITOR " << __func__ << "(4) descending into bigger DIR " << **it << dendl;
+  #endif
+    dout(15) << "   descending into " << **it << dendl;
+    find_exports(*it, amount, exports, have, already_exporting);
+    if (have > needmin)
+      return;
+  }
+
+  // ok fine, use smaller bits
+  for (;
+       it != smaller.rend();
+       ++it) {
+    dout(7) << "   taking (much) smaller " << it->first << " " << *(*it).second << dendl;
+    #ifdef MDS_MONITOR
+  dout(7) << " MDS_MONITOR " << __func__ << "(5) taking (much) smaller DIR " << *((*it).second) << " pop " << (*it).first << dendl;
+  #endif
+    exports.push_back((*it).second);
+    already_exporting.insert((*it).second);
+    have += (*it).first;
+    if (have > needmin)
+      return;
+  }
+
+  // ok fine, drill into replicated dirs
+  for (list<CDir*>::iterator it = bigger_rep.begin();
+       it != bigger_rep.end();
+       ++it) {
+    #ifdef MDS_MONITOR
+  dout(7) << " MDS_MONITOR " << __func__ << "(6) descending into replicated DIR " << **it << dendl;
+  #endif
+    dout(7) << "   descending into replicated " << **it << dendl;
+    find_exports(*it, amount, exports, have, already_exporting);
+    if (have > needmin)
+      return;
+  }
+
+}
+#endif
+
 
 void MDBalancer::find_exports(CDir *dir,
                               double amount,
