@@ -1147,6 +1147,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   multimap<double, CDir*> smaller;
   multimap<double, CDir*> verycold;
   int coldcount = 0;
+  int migcoldcount = 0;
 
   double dir_pop = dir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
   dout(7) << " find_exports in " << dir_pop << " " << *dir << " need " << need << " (" << needmin << " - " << needmax << ")" << dendl;
@@ -1218,6 +1219,8 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     exports.push_back((*it).second);
     already_exporting.insert((*it).second);
     have += (*it).first;
+    migcoldcount++;
+    if(migcoldcount>=10)return;
     }
     return;
   }else{
