@@ -1098,10 +1098,11 @@ void MDBalancer::try_rebalance(balance_state_t& state)
 
       #ifdef MDS_COLDFIRST_BALANCER
       find_exports_coldfirst(*pot, amount, exports, have, already_exporting);
-      #elif
+      #endif
+      #ifndef MDS_COLDFIRST_BALANCER
       find_exports(*pot, amount, exports, have, already_exporting);
       #endif
-      
+
       if (have > amount-MIN_OFFLOAD)
 	break;
     }
