@@ -1183,7 +1183,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       if (pop < minchunk) {
       verycold.insert(pair<double,CDir*>(pop, subdir));
       coldcount++;
-      dout(1) << " MDS_COLD " << __func__ << "find a clod " << *((*it).second) << " pop " << (*it).first << dendl;
+      dout(1) << " MDS_COLD " << __func__ << " find a clod " << *((*it).second) << " pop " << (*it).first << dendl;
       }
 
       // lucky find?
@@ -1210,8 +1210,8 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   dout(15) << "   sum " << subdir_sum << " / " << dir_pop << dendl;
 
   multimap<double,CDir*>::reverse_iterator it;
-  if(coldcount>=10){
-  dout(1) << " MDS_COLD " << __func__ << "start cold balance" << dendl;
+  if(coldcount>0){
+  dout(1) << " MDS_COLD " << __func__ << " cold first start " << dendl;
     for (it = verycold.rbegin();
        it != verycold.rend();
        ++it) {
@@ -1221,7 +1221,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     }
     return;
   }else{
-    dout(1) << " MDS_COLD " << __func__ << "unable to start cold balance" <<dendl;
+    dout(1) << " MDS_COLD " << __func__ << " unable to start cold balance" <<dendl;
   }
 
 
