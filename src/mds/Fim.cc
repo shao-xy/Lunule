@@ -178,66 +178,66 @@ public:
 
 // ----  Fim ----
 Fim::Fim(Migrator *m) : mig(m){
-	fim_dout(7) << " I am Fim, Hi~" << fim_dendl;
+	fim_dout(7) << "I am Fim, Hi~" << fim_dendl;
 }
 
 Fim::~Fim(){
-	fim_dout(7) << " Fim say Goodbye~" << fim_dendl;
+	fim_dout(7) << "Fim say Goodbye~" << fim_dendl;
 }
 
 /** fim_export_dir - export dir to dest mds
 **/
 void Fim::fim_export_dir(CDir *dir, mds_rank_t dest){
-	fim_dout(7) << __func__ << "export dir " << *dir << " start." << fim_dendl;
+	fim_dout(7) << __func__ << " export dir " << *dir << " start." << fim_dendl;
 
 	assert(dir->is_auth());
   	assert(dest != mig->mds->get_nodeid());
 
   	if(!(mig->mds->is_active() || mig->mds->is_stopping())){
-  		fim_dout(7) << __func__ << "i'm not active, no exports for now" << fim_dendl;
+  		fim_dout(7) << __func__ << " i'm not active, no exports for now" << fim_dendl;
   		return;
   	}
 
   	if(mig->mds->mdcache->is_readonly()){
-  		fim_dout(7) << __func__ << "read-only FS, no exports for now" << fim_dendl;
+  		fim_dout(7) << __func__ << " read-only FS, no exports for now" << fim_dendl;
   		return;
   	}
 
   	if(!mig->mds->mdsmap->is_active(dest)){
-  		fim_dout(7) << __func__ << "dest not active, no exports for now" << fim_dendl;
+  		fim_dout(7) << __func__ << " dest not active, no exports for now" << fim_dendl;
   		return;
   	}
 
   	if(mig->mds->is_cluster_degraded()){
-  		fim_dout(7) << __func__ << "cluster degraded, no exports for now" << fim_dendl;
+  		fim_dout(7) << __func__ << " cluster degraded, no exports for now" << fim_dendl;
   		return;
   	}
 
   	if(dir->inode->is_system()){
-  		fim_dout(7) << __func__ << "i won't export system dirs (root, mdsdirs, stray, /.ceph, etc.)" << fim_dendl;
+  		fim_dout(7) << __func__ << " i won't export system dirs (root, mdsdirs, stray, /.ceph, etc.)" << fim_dendl;
   		return;
   	}
 
   	CDir *parent_dir = dir->inode->get_projected_parent_dir();
   	if(parent_dir && parent_dir->inode->is_stray()){
   		if(parent_dir->get_parent_dir()->ino() != MDS_INO_MDSDIR(dest)){
-  			fim_dout(7) << __func__ << "i won't export anything in stray" << fim_dendl;
+  			fim_dout(7) << __func__ << " i won't export anything in stray" << fim_dendl;
   			return;
   		}
   	} else{
   		if(!mig->mds->is_stopping() && !dir->inode->is_exportable(dest)){
-  			fim_dout(7) << __func__ << "dir is export pinned" << fim_dendl;
+  			fim_dout(7) << __func__ << " dir is export pinned" << fim_dendl;
   			return;
   		}
   	}
 
   	if(dir->is_frozen() || dir->is_freezing()){
-  		fim_dout(7) << __func__ << "can't export, freezing|frozen. wait for other exports to finish first." << fim_dendl;
+  		fim_dout(7) << __func__ << " can't export, freezing|frozen. wait for other exports to finish first." << fim_dendl;
   		return;
   	}
 
   	if(dir->state_test(CDir::STATE_EXPORTING)){
-  		fim_dout(7) << __func__ << "already exporting" << fim_dendl;
+  		fim_dout(7) << __func__ << " already exporting" << fim_dendl;
   		return;
   	}
 
@@ -263,7 +263,7 @@ void Fim::fim_export_dir(CDir *dir, mds_rank_t dest){
   				assert(bd->is_auth());
   				dir->state_set(CDir::STATE_AUXSUBTREE);
   				mig->mds->mdcache->adjust_subtree_auth(dir, mig->mds->get_nodeid());
-  				fim_dout(0) << __func__ << "export_dir: create aux subtree" << *bd << " under " << *dir << fim_dendl;
+  				fim_dout(0) << __func__ << " export_dir: create aux subtree" << *bd << " under " << *dir << fim_dendl;
   			}
   		}
   	}
@@ -291,7 +291,7 @@ void Fim::fim_export_dir(CDir *dir, mds_rank_t dest){
  * send discover msg to importer
  */
 void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
-	fim_dout(7) << __func__ << *mdr << fim_dendl;
+	fim_dout(7) << __func__ << " " << *mdr << fim_dendl;
 
 	CDir *dir = mdr->more()->export_dir;
 	map<CDir *, Migrator::export_state_t>::iterator it = mig->export_state.find(dir);
@@ -304,9 +304,9 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 	assert(it->second.state == EXPORT_LOCKING);
 	mds_rank_t dest = it->second.peer;
 	if(!mig->mds->is_export_target(dest)){
-		fim_dout(7) << __func__ << "dest is not yet an export target" << fim_dendl;
+		fim_dout(7) << __func__ << " dest is not yet an export target" << fim_dendl;
 		if(count > 3){
-			fim_dout(7) << __func__ << "dest has not been added as export target after three MDSMap epochs, canceling export" << fim_dendl;
+			fim_dout(7) << __func__ << " dest has not been added as export target after three MDSMap epochs, canceling export" << fim_dendl;
 			mig->export_try_cancel(dir);
 			return;
 		}
@@ -319,13 +319,13 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 	}
 
 	if(!dir->inode->get_parent_dn()){
-		fim_dout(7) << __func__ << "waiting for dir to become stable before export: " << *dir << fim_dendl;
+		fim_dout(7) << __func__ << " waiting for dir to become stable before export: " << *dir << fim_dendl;
 		dir->add_waiter(CDir::WAIT_CREATED, new C_M_ExportDirWait(mig, mdr, 1));
 		return;
 	}
 
 	if(mdr->aborted || dir->is_frozen() || dir->is_freezing()){
-		fim_dout(7) << __func__ << "wouldblock|freezing|frozen, canceling export" << fim_dendl;
+		fim_dout(7) << __func__ << " wouldblock|freezing|frozen, canceling export" << fim_dendl;
 		mig->export_try_cancel(dir);
 		return;
 	}
@@ -353,7 +353,7 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 
 	filepath path;
 	dir->inode->make_path(path);
-	fim_dout(7) << __func__ << "Flow:[1] send Discover message" << fim_dendl;
+	fim_dout(7) << __func__ << " Flow:[1] send Discover message" << fim_dendl;
 	MExportDirDiscover *discover = new MExportDirDiscover(dir->dirfrag(), path, mig->mds->get_nodeid(), it->second.tid);
 	mig->mds->send_message_mds(discover, dest);
 
@@ -373,12 +373,12 @@ void Fim::fim_handle_export_discover(MExportDirDiscover *m){
 	mds_rank_t from = m->get_source_mds();
 	assert(from != mig->mds->get_nodeid());
 
-	fim_dout(7) << __func__ << "Flow:[2] recv Discover message on " << m->get_path() << fim_dendl;
+	fim_dout(7) << __func__ << " Flow:[2] recv Discover message on " << m->get_path() << fim_dendl;
 
 	dirfrag_t df = m->get_dirfrag();
 
 	if(!mig->mds->is_active()){
-		fim_dout(7) << __func__ << "mds is not active, send NACK" << fim_dendl;
+		fim_dout(7) << __func__ << " mds is not active, send NACK" << fim_dendl;
 		mig->mds->send_message_mds(new MExportDirDiscoverAck(df, m->get_tid(), false), from);
 		m->put();
 		return;
@@ -397,7 +397,7 @@ void Fim::fim_handle_export_discover(MExportDirDiscover *m){
 	else{
 		// am i retrying after ancient path_traverse results?
 		if(it == mig->import_state.end() || it->second.peer != from || it->second.tid != m->get_tid()){
-			fim_dout(7) << __func__ << "dropping obsolete message" << fim_dendl;
+			fim_dout(7) << __func__ << " dropping obsolete message" << fim_dendl;
 			m->put();
 			return;
 		}
@@ -406,7 +406,7 @@ void Fim::fim_handle_export_discover(MExportDirDiscover *m){
 	}
 
 	if(!mig->mds->mdcache->is_open()){
-		fim_dout(7) << __func__ << "waiting for root" << fim_dendl;
+		fim_dout(7) << __func__ << " waiting for root" << fim_dendl;
 		mig->mds->mdcache->wait_for_open(new C_MDS_RetryMessage(mig->mds, m));
 		return;
 	}
@@ -423,7 +423,7 @@ void Fim::fim_handle_export_discover(MExportDirDiscover *m){
 		int r = mig->cache->path_traverse(null_ref, m, NULL, fpath, &trace, NULL, MDS_TRAVERSE_DISCOVER);
 		if(r > 0) return;
 		if(r < 0){
-			fim_dout(7) << __func__ << "failed to discover or not dir" << m->get_path() << fim_dendl;
+			fim_dout(7) << __func__ << " failed to discover or not dir" << m->get_path() << fim_dendl;
 			ceph_abort(); // this shouldn't happen if the auth pins its path properly!!!!
 		}
 
@@ -431,7 +431,7 @@ void Fim::fim_handle_export_discover(MExportDirDiscover *m){
 	}
 
 	// yay
-	fim_dout(7) << __func__ << "have " << df << " inode " << *in << fim_dendl;
+	fim_dout(7) << __func__ << " have " << df << " inode " << *in << fim_dendl;
 
 	p_state->state = IMPORT_DISCOVERED;
 
@@ -440,7 +440,7 @@ void Fim::fim_handle_export_discover(MExportDirDiscover *m){
 	in->get(CInode::PIN_IMPORTING);
 
 	// reply
-	fim_dout(7) << __func__ << "Flow:[3] send DiscoverACK message" << fim_dendl;
+	fim_dout(7) << __func__ << " Flow:[3] send DiscoverACK message" << fim_dendl;
 	mig->mds->send_message_mds(new MExportDirDiscoverAck(df, m->get_tid()), p_state->peer);
 	m->put();
 	assert(g_conf->mds_kill_import_at != 2); 
@@ -453,13 +453,13 @@ void Fim::fim_handle_export_discover_ack(MExportDirDiscoverAck *m){
 	utime_t now = ceph_clock_now();
 	assert(dir);
 
-	fim_dout(7) << __func__ << "Flow:[4] recv DirDiscoverAck from " << m->get_source() << " on " << *dir << fim_dendl;
+	fim_dout(7) << __func__ << " Flow:[4] recv DirDiscoverAck from " << m->get_source() << " on " << *dir << fim_dendl;
 	mig->mds->hit_export_target(now, dest, -1);
 
 	map<CDir*, Migrator::export_state_t>::iterator it = mig->export_state.find(dir);
 	if(it == mig->export_state.end() || it->second.tid != m->get_tid() || it->second.peer != dest){
 		// must be aborted
-		fim_dout(7) << __func__ << "must have aborted" << fim_dendl;
+		fim_dout(7) << __func__ << " must have aborted" << fim_dendl;
 	}
 	else{
 		assert(it->second.state == EXPORT_DISCOVERING);
@@ -476,7 +476,7 @@ void Fim::fim_handle_export_discover_ack(MExportDirDiscoverAck *m){
 			assert(g_conf->mds_kill_export_at != 3);
 		}
 		else{
-			fim_dout(7) << "peer failed to discover (not active?), canceling" << fim_dendl;
+			fim_dout(7) << " peer failed to discover (not active?), canceling" << fim_dendl;
 			mig->export_try_cancel(dir, false);
 		}
 	}
@@ -489,7 +489,7 @@ void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
 	fim_dout(7) << __func__ << " on " << *dir << fim_dendl;
 	map<CDir*,Migrator::export_state_t>::iterator it = mig->export_state.find(dir);
 	if (it == mig->export_state.end() || it->second.tid != tid) {
-		dout(7) << "export must have aborted" << dendl;
+		dout(7) << " export must have aborted" << dendl;
 		return;
 	}
 
@@ -503,7 +503,7 @@ void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
 	set<SimpleLock*> rdlocks;
 	mig->get_export_lock_set(dir, rdlocks);
 	if ((diri->is_auth() && diri->is_frozen()) || !mig->mds->locker->can_rdlock_set(rdlocks) || !diri->filelock.can_wrlock(-1) || !diri->nestlock.can_wrlock(-1)) {
-		fim_dout(7) << "export_dir couldn't acquire all needed locks, failing. " << *dir << fim_dendl;
+		fim_dout(7) << " export_dir couldn't acquire all needed locks, failing. " << *dir << fim_dendl;
 		// .. unwind ..
 		dir->unfreeze_tree();
 		mig->cache->try_subtree_merge(dir);
@@ -542,7 +542,7 @@ void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
  	// include list of bystanders
  	for(const auto &p : dir->get_replicas()){
  		if(p.first != it->second.peer){
- 			fim_dout(7) << __func__ << "bystander mds." << p.first << fim_dendl;
+ 			fim_dout(7) << __func__ << " bystander mds." << p.first << fim_dendl;
  			prep->add_bystander(p.first);
  		}
  	}
@@ -568,7 +568,7 @@ void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
 		// pin it
 		assert(bound->state_test(CDir::STATE_EXPORTBOUND));
 
-		fim_dout(7) << __func__ << "export bound " << *bound << fim_dendl;
+		fim_dout(7) << __func__ << " export bound " << *bound << fim_dendl;
 		prep->add_bound(bound->dirfrag());
 
 		// trace to bound
@@ -579,7 +579,7 @@ void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
 		if(it->second.residual_dirs.count(bound)){
 			start = 'f';
 			mig->cache->replicate_dir(bound, it->second.peer, tracebl);
-			fim_dout(7) << __func__ << "add " << *bound << fim_dendl;
+			fim_dout(7) << __func__ << " add " << *bound << fim_dendl;
 		}
 
 		while(1){
@@ -592,9 +592,9 @@ void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
 			assert(cur->inode->is_auth());
 			bufferlist bl;
 			mig->cache->replicate_dentry(cur->inode->parent, it->second.peer, bl);
-			fim_dout(7) << __func__ << "added " << *cur->inode->parent << fim_dendl;
+			fim_dout(7) << __func__ << " added " << *cur->inode->parent << fim_dendl;
 			mig->cache->replicate_inode(cur->inode, it->second.peer, bl, mig->mds->mdsmap->get_up_features());
-			fim_dout(7) << __func__ << "added " << *cur->inode << fim_dendl;
+			fim_dout(7) << __func__ << " added " << *cur->inode << fim_dendl;
 			bl.claim_append(tracebl);
 			tracebl.claim(bl);
 
@@ -609,7 +609,7 @@ void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
 
 			// prepend dir
 			mig->cache->replicate_dir(cur, it->second.peer, bl);
-			fim_dout(7) << __func__ << "added " << *cur << fim_dendl;
+			fim_dout(7) << __func__ << " added " << *cur << fim_dendl;
 
 			bl.claim_append(tracebl);
 			tracebl.claim(bl);
@@ -625,7 +625,7 @@ void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
 
 	// send
 	it->second.state = EXPORT_PREPPING;
-	fim_dout(7) << __func__ << "Flow:[5] send Prepare message" << fim_dendl;
+	fim_dout(7) << __func__ << " Flow:[5] send Prepare message" << fim_dendl;
 	mig->mds->send_message_mds(prep, it->second.peer);
 	assert(g_conf->mds_kill_export_at != 4);
 
@@ -642,7 +642,7 @@ void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
 }
 
 void Fim::fim_handle_export_prep(MExportDirPrep *m){
-	fim_dout(7) << __func__ << "Flow:[6] recv Prepare message" << fim_dendl;
+	fim_dout(7) << __func__ << " Flow:[6] recv Prepare message" << fim_dendl;
 	mds_rank_t oldauth = mds_rank_t(m->get_source().num());
 	assert(oldauth != mig->mds->get_nodeid());
 
@@ -661,11 +661,11 @@ void Fim::fim_handle_export_prep(MExportDirPrep *m){
 		assert(diri);
 		bufferlist::iterator p = m->basedir.begin();
 		dir = mig->cache->add_replica_dir(p, diri, oldauth, finished);
-		fim_dout(7) << __func__ << "fim_handle_export_prep on " << *dir << " (first pass)" << fim_dendl;
+		fim_dout(7) << __func__ << " fim_handle_export_prep on " << *dir << " (first pass)" << fim_dendl;
 	}
 	else{
 		if(it == mig->import_state.end() || it->second.peer != oldauth || it->second.tid != m->get_tid()){
-			fim_dout(7) << __func__ << "obsolete message, dropping" << fim_dendl;
+			fim_dout(7) << __func__ << " obsolete message, dropping" << fim_dendl;
 			m->put();
 			return;
 		}
@@ -673,29 +673,29 @@ void Fim::fim_handle_export_prep(MExportDirPrep *m){
 		assert(it->second.peer == oldauth);
 		dir = mig->cache->get_dirfrag(m->get_dirfrag());
 		assert(dir);
-		fim_dout(7) << __func__ << "fim_handle_export_prep on " << *dir << " (subsequent pass)" << fim_dendl;
+		fim_dout(7) << __func__ << " fim_handle_export_prep on " << *dir << " (subsequent pass)" << fim_dendl;
 		diri = dir->get_inode();
 	}
 	assert(dir->is_auth() == false);
 	// mig->cache->show_subtrees();
 
 	if(m->get_bounds().empty()){
-		fim_dout(7) << __func__ << "bounds is empty" << fim_dendl;
+		fim_dout(7) << __func__ << " bounds is empty" << fim_dendl;
 	}
 	else{
-		fim_dout(7) << __func__ << "bounds is not empty, size " << m->get_bounds().size() << fim_dendl;
+		fim_dout(7) << __func__ << " bounds is not empty, size " << m->get_bounds().size() << fim_dendl;
 	}
 
 	// build import bound map
 	map<inodeno_t, fragset_t> import_bound_fragset;
 	for(list<dirfrag_t>::iterator p = m->get_bounds().begin(); p != m->get_bounds().end(); ++p){
-		fim_dout(7) << __func__ << "bound " << *p << fim_dendl;
+		fim_dout(7) << __func__ << " bound " << *p << fim_dendl;
 		import_bound_fragset[p->ino].insert(p->frag);
 	}
 
 	// assimilate contents?
 	if(!m->did_assim()){
-		fim_dout(7) << __func__ << "doing assim on " << *dir << fim_dendl;
+		fim_dout(7) << __func__ << " doing assim on " << *dir << fim_dendl;
 		m->mark_assim();
 
 		// change import state
@@ -705,7 +705,7 @@ void Fim::fim_handle_export_prep(MExportDirPrep *m){
 		assert(g_conf->mds_kill_import_at != 3);
 
 		// bystander list
-		fim_dout(7) << __func__ << "bystanders are " << it->second.bystanders << fim_dendl;
+		fim_dout(7) << __func__ << " bystanders are " << it->second.bystanders << fim_dendl;
 
 		// move pin to dir
 		diri->put(CInode::PIN_IMPORTING);
@@ -720,20 +720,20 @@ void Fim::fim_handle_export_prep(MExportDirPrep *m){
 			::decode(df, q);
 			char start;
 			::decode(start, q);
-			fim_dout(7) << __func__ << "trace from " << df << " start " << start << " len " << p->length() << fim_dendl;
+			fim_dout(7) << __func__ << " trace from " << df << " start " << start << " len " << p->length() << fim_dendl;
 
 			CDir *cur = 0;
 			if (start == 'd') {
 				cur = mig->cache->get_dirfrag(df);
 				assert(cur);
-				fim_dout(7) << __func__ << "had " << *cur << fim_dendl;
+				fim_dout(7) << __func__ << " had " << *cur << fim_dendl;
 			} 
 			else if (start == 'f') {
 				CInode *in = mig->cache->get_inode(df.ino);
 				assert(in);
-				fim_dout(7) << __func__ << "had " << *in << fim_dendl;
+				fim_dout(7) << __func__ << " had " << *in << fim_dendl;
 				cur = mig->cache->add_replica_dir(q, in, oldauth, finished);
-				fim_dout(7) << __func__ << "added " << *cur << fim_dendl;
+				fim_dout(7) << __func__ << " added " << *cur << fim_dendl;
 			}
 			else if (start == '-') {
 				// nothing
@@ -743,13 +743,13 @@ void Fim::fim_handle_export_prep(MExportDirPrep *m){
 
 			while (!q.end()) {
 				CDentry *dn = mig->cache->add_replica_dentry(q, cur, finished);
-				fim_dout(7) << __func__ << "added " << *dn << fim_dendl;
+				fim_dout(7) << __func__ << " added " << *dn << fim_dendl;
 				CInode *in = mig->cache->add_replica_inode(q, dn, finished);
-				fim_dout(7) << __func__ << "added " << *in << fim_dendl;
+				fim_dout(7) << __func__ << " added " << *in << fim_dendl;
 				if (q.end())
 					break;
 				cur = mig->cache->add_replica_dir(q, in, oldauth, finished);
-				fim_dout(7) << __func__ << "added " << *cur << fim_dendl;
+				fim_dout(7) << __func__ << " added " << *cur << fim_dendl;
 			}
 		}
 		// make bound sticky
@@ -757,11 +757,11 @@ void Fim::fim_handle_export_prep(MExportDirPrep *m){
 			CInode *in = mig->cache->get_inode(p->first);
 			assert(in);
 			in->get_stickydirs();
-			fim_dout(7) << __func__ << "set stickydirs on bound inode " << *in << fim_dendl;
+			fim_dout(7) << __func__ << " set stickydirs on bound inode " << *in << fim_dendl;
     	}
 	}
 	else {
-    	fim_dout(7) << __func__ << "not doing assim on " << *dir << fim_dendl;
+    	fim_dout(7) << __func__ << " not doing assim on " << *dir << fim_dendl;
 	}
 
 	if (!finished.empty())
@@ -779,29 +779,29 @@ void Fim::fim_handle_export_prep(MExportDirPrep *m){
 			list<frag_t> fglist;
 			for (set<frag_t>::iterator q = p->second.begin(); q != p->second.end(); ++q)
 				in->dirfragtree.get_leaves_under(*q, fglist);
-			fim_dout(7) << __func__ << "bound inode " << p->first << " fragset " << p->second << " maps to " << fglist << fim_dendl;
+			fim_dout(7) << __func__ << " bound inode " << p->first << " fragset " << p->second << " maps to " << fglist << fim_dendl;
 
 			for (list<frag_t>::iterator q = fglist.begin(); q != fglist.end(); ++q) {
 				CDir *bound = mig->cache->get_dirfrag(dirfrag_t(p->first, *q));
 				if (!bound) {
-					fim_dout(7) << __func__ << "opening bounding dirfrag " << *q << " on " << *in << fim_dendl;
+					fim_dout(7) << __func__ << " opening bounding dirfrag " << *q << " on " << *in << fim_dendl;
 					mig->cache->open_remote_dirfrag(in, *q, new C_MDS_RetryMessage(mig->mds, m));
 					return;
 				}
 
 				if (!bound->state_test(CDir::STATE_IMPORTBOUND)) {
-			  	fim_dout(7) << __func__ << "pinning import bound " << *bound << fim_dendl;
+			  	fim_dout(7) << __func__ << " pinning import bound " << *bound << fim_dendl;
 			  	bound->get(CDir::PIN_IMPORTBOUND);
 			  	bound->state_set(CDir::STATE_IMPORTBOUND);
 				} 
 				else {
-			  		fim_dout(7) << __func__ << "already pinned import bound " << *bound << fim_dendl;
+			  		fim_dout(7) << __func__ << " already pinned import bound " << *bound << fim_dendl;
 				}
 				import_bounds.insert(bound);
 		  	}
 		}
 
-		fim_dout(7) << __func__ << "all ready, noting auth and freezing import region" << fim_dendl; 
+		fim_dout(7) << __func__ << " all ready, noting auth and freezing import region" << fim_dendl; 
 
 		if (!mig->mds->mdcache->is_readonly() && dir->get_inode()->filelock.can_wrlock(-1) && dir->get_inode()->nestlock.can_wrlock(-1)) {
 			it->second.mut = new MutationImpl();
@@ -813,10 +813,10 @@ void Fim::fim_handle_export_prep(MExportDirPrep *m){
 			// specify bounds, since the exporter explicitly defines the region.
 
 			if(import_bounds.empty()){
-				fim_dout(7) << __func__ << "we will adjust the import_bounds, and it is empty " << fim_dendl;
+				fim_dout(7) << __func__ << " we will adjust the import_bounds, and it is empty " << fim_dendl;
 			}
 			else{
-				fim_dout(7) << __func__ << "we will adjust the import_bounds, and it is NOT empty "<< fim_dendl;
+				fim_dout(7) << __func__ << " we will adjust the import_bounds, and it is NOT empty "<< fim_dendl;
 			}
 
 			mig->cache->adjust_bounded_subtree_auth(dir, import_bounds, pair<int,int>(oldauth, mig->mds->get_nodeid()));
@@ -827,12 +827,12 @@ void Fim::fim_handle_export_prep(MExportDirPrep *m){
 			it->second.state = IMPORT_PREPPED;
 		} 
 		else {
-			fim_dout(7) << __func__ << "couldn't acquire all needed locks, failing. " << *dir << fim_dendl;
+			fim_dout(7) << __func__ << " couldn't acquire all needed locks, failing. " << *dir << fim_dendl;
 		  	success = false;
 		}
 	}
 	else {
-		fim_dout(7) << __func__ << "not active, failing. " << *dir << fim_dendl;
+		fim_dout(7) << __func__ << " not active, failing. " << *dir << fim_dendl;
 		success = false;
 	}
 
@@ -840,8 +840,8 @@ void Fim::fim_handle_export_prep(MExportDirPrep *m){
 		mig->import_reverse_prepping(dir, it->second);
 
 	// ok!
-	fim_dout(7) << __func__ << "sending export_prep_ack on " << *dir << fim_dendl;
-	fim_dout(7) << __func__ << "Flow:[7] send PrepareACK message" << fim_dendl;
+	fim_dout(7) << __func__ << " sending export_prep_ack on " << *dir << fim_dendl;
+	fim_dout(7) << __func__ << " Flow:[7] send PrepareACK message" << fim_dendl;
 	mig->mds->send_message(new MExportDirPrepAck(dir->dirfrag(), success, m->get_tid()), m->get_connection());
 
 	assert(g_conf->mds_kill_import_at != 4);
@@ -850,27 +850,27 @@ void Fim::fim_handle_export_prep(MExportDirPrep *m){
 }
 
 void Fim::fim_handle_export_prep_ack(MExportDirPrepAck *m){
-	fim_dout(7) << __func__ << "Flow:[8] recv PrepareACK message" << fim_dendl;
+	fim_dout(7) << __func__ << " Flow:[8] recv PrepareACK message" << fim_dendl;
 	CDir *dir = mig->cache->get_dirfrag(m->get_dirfrag());
 	mds_rank_t dest(m->get_source().num());
 	utime_t now = ceph_clock_now();
 	assert(dir);
 
-	fim_dout(7) << __func__ << "on " << *dir << fim_dendl;
+	fim_dout(7) << __func__ << " on " << *dir << fim_dendl;
 
 	mig->mds->hit_export_target(now, dest, -1);
 
 	map<CDir*,Migrator::export_state_t>::iterator it = mig->export_state.find(dir);
 	if (it == mig->export_state.end() || it->second.tid != m->get_tid() || it->second.peer != mds_rank_t(m->get_source().num())) {
 		// export must have aborted.  
-		fim_dout(7) << __func__ << "export must have aborted" << fim_dendl;
+		fim_dout(7) << __func__ << " export must have aborted" << fim_dendl;
 		m->put();
 		return;
 	}
 	assert(it->second.state == EXPORT_PREPPING);
 
 	if (!m->is_success()) {
-		fim_dout(7) << __func__ << "peer couldn't acquire all needed locks or wasn't active, canceling" << fim_dendl;
+		fim_dout(7) << __func__ << " peer couldn't acquire all needed locks or wasn't active, canceling" << fim_dendl;
 		mig->export_try_cancel(dir, false);
 		m->put();
 		return;
@@ -896,7 +896,7 @@ void Fim::fim_handle_export_prep_ack(MExportDirPrepAck *m){
 		for (set<CDir*>::iterator q = bounds.begin(); q != bounds.end(); ++q){
 	  		notify->get_bounds().push_back((*q)->dirfrag());
 		}
-		fim_dout(7) << __func__ << "Flow:[9] send Notify message!" << fim_dendl;
+		fim_dout(7) << __func__ << " Flow:[9] send Notify message!" << fim_dendl;
 		mig->mds->send_message_mds(notify, p.first);
 	}
 
@@ -906,7 +906,7 @@ void Fim::fim_handle_export_prep_ack(MExportDirPrepAck *m){
 
 	// nobody to warn?
 	if (it->second.warning_ack_waiting.empty()){
-		fim_dout(7) << __func__ << "start export_go" << fim_dendl;
+		fim_dout(7) << __func__ << " start export_go" << fim_dendl;
 		mig->export_go(dir);  // start export.
 	}
 
@@ -920,13 +920,13 @@ void Fim::fim_export_go_synced(CDir *dir, uint64_t tid){
 	map<CDir*,Migrator::export_state_t>::iterator it = mig->export_state.find(dir);
 	if (it == mig->export_state.end() || it->second.state == EXPORT_CANCELLING || it->second.tid != tid) {
 		// export must have aborted.  
-		fim_dout(7) << __func__ << "export must have aborted on " << dir << fim_dendl;
+		fim_dout(7) << __func__ << " export must have aborted on " << dir << fim_dendl;
 		return;
 	}
 	assert(it->second.state == EXPORT_WARNING);
 	mds_rank_t dest = it->second.peer;
 
-	fim_dout(7) << __func__ << "on dir " << *dir << " to " << dest << fim_dendl;
+	fim_dout(7) << __func__ << " on dir " << *dir << " to " << dest << fim_dendl;
 
 	mig->cache->show_subtrees();
 
@@ -960,7 +960,7 @@ void Fim::fim_export_go_synced(CDir *dir, uint64_t tid){
 		req->add_export((*p)->dirfrag());
 
 	// send
-	fim_dout(7) << __func__ << "Flow:[9] send Export message" << fim_dendl;
+	fim_dout(7) << __func__ << " Flow:[9] send Export message" << fim_dendl;
 	mig->mds->send_message_mds(req, dest);
 	assert(g_conf->mds_kill_export_at != 8);
 
@@ -974,13 +974,13 @@ void Fim::fim_export_go_synced(CDir *dir, uint64_t tid){
 }
 
 void Fim::fim_handle_export_dir(MExportDir *m){
-	fim_dout(7) << __func__ << "Flow[10] recv Export message" << fim_dendl;
+	fim_dout(7) << __func__ << " Flow[10] recv Export message" << fim_dendl;
 	assert (g_conf->mds_kill_import_at != 5);
 	CDir *dir = mig->cache->get_dirfrag(m->dirfrag);
 	assert(dir);
 
 	mds_rank_t oldauth = mds_rank_t(m->get_source().num());
-	fim_dout(7) << __func__ << "importing " << *dir << " from " << oldauth << fim_dendl;
+	fim_dout(7) << __func__ << " importing " << *dir << " from " << oldauth << fim_dendl;
 	assert(!dir->is_auth());
 
 	map<dirfrag_t,Migrator::import_state_t>::iterator it = mig->import_state.find(m->dirfrag);
@@ -1043,7 +1043,7 @@ void Fim::fim_handle_export_dir(MExportDir *m){
 	// adjust popularity
 	mig->mds->balancer->add_import(dir, now);
 
-	fim_dout(7) << __func__ << "did " << *dir << fim_dendl;
+	fim_dout(7) << __func__ << " did " << *dir << fim_dendl;
 
 	// note state
 	it->second.state = IMPORT_LOGGINGSTART;
@@ -1066,12 +1066,12 @@ void Fim::fim_import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from, map<
 	
 	map<dirfrag_t, Migrator::import_state_t>::iterator it = mig->import_state.find(dir->dirfrag());
 	if (it == mig->import_state.end() || it->second.state != IMPORT_LOGGINGSTART) {
-		fim_dout(7) << __func__ << "import " << df << " must have aborted" << fim_dendl;
+		fim_dout(7) << __func__ << " import " << df << " must have aborted" << fim_dendl;
 		mig->mds->server->finish_force_open_sessions(imported_client_map, sseqmap);
 		return;
 	}
 
-	fim_dout(7) << __func__ << "import_logged " << *dir << fim_dendl;
+	fim_dout(7) << __func__ << " import_logged " << *dir << fim_dendl;
 
 	// note state
 	it->second.state = IMPORT_ACKING;
@@ -1089,14 +1089,14 @@ void Fim::fim_import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from, map<
 	}
 
 	// send notify's etc.
-	fim_dout(7) << __func__ << "sending ack for " << *dir << " to old auth mds." << from << fim_dendl;
+	fim_dout(7) << __func__ << " sending ack for " << *dir << " to old auth mds." << from << fim_dendl;
 
 	// test surviving observer of a failed migration that did not complete
 	//assert(dir->replica_map.size() < 2 || mds->get_nodeid() != 0);
 
 	MExportDirAck *ack = new MExportDirAck(dir->dirfrag(), it->second.tid);
 	::encode(imported_caps, ack->imported_caps);
-	fim_dout(7) << __func__ << "Flow:[11] send ExportAck message!" << fim_dendl;
+	fim_dout(7) << __func__ << " Flow:[11] send ExportAck message!" << fim_dendl;
 	mig->mds->send_message_mds(ack, from);
 	assert (g_conf->mds_kill_import_at != 8);
 
@@ -1104,7 +1104,7 @@ void Fim::fim_import_logged_start(dirfrag_t df, CDir *dir, mds_rank_t from, map<
 }
 
 void Fim::fim_handle_export_ack(MExportDirAck *m){
-	fim_dout(7) << __func__ << "Flow:[12] recv ExportAck message!" << fim_dendl;
+	fim_dout(7) << __func__ << " Flow:[12] recv ExportAck message!" << fim_dendl;
 	CDir *dir = mig->cache->get_dirfrag(m->get_dirfrag());
 	mds_rank_t dest(m->get_source().num());
 	utime_t now = ceph_clock_now();
@@ -1112,7 +1112,7 @@ void Fim::fim_handle_export_ack(MExportDirAck *m){
 	assert(dir->is_frozen_tree_root());  // i'm exporting!
 
 	// yay!
-	fim_dout(7) << "on dir " << *dir << fim_dendl;
+	fim_dout(7) << __func__ << " on dir " << *dir << fim_dendl;
 
 	mig->mds->hit_export_target(now, dest, -1);
 
@@ -1156,7 +1156,7 @@ void Fim::fim_handle_export_ack(MExportDirAck *m){
 }
 
 void Fim::fim_export_logged_finish(CDir *dir){
-	fim_dout(7) << __func__ << "start export_logged_finish." << fim_dendl;
+	fim_dout(7) << __func__ << " start export_logged_finish." << fim_dendl;
 
 	Migrator::export_state_t& stat = mig->export_state[dir];
 
@@ -1186,22 +1186,22 @@ void Fim::fim_export_logged_finish(CDir *dir){
 	else {
 		// notify peer to send cap import messages to clients
 		if (!mig->mds->is_cluster_degraded() || mig->mds->mdsmap->is_clientreplay_or_active_or_stopping(stat.peer)) {
-		  fim_dout(7) << __func__ << "Flow:[13] send ExportFinish message" << fim_dendl;
+		  fim_dout(7) << __func__ << " Flow:[13] send ExportFinish message" << fim_dendl;
 		  mig->mds->send_message_mds(new MExportDirFinish(dir->dirfrag(), false, stat.tid), stat.peer);
 		} 
 		else {
-	  		fim_dout(7) << __func__ << "not sending MExportDirFinish, dest has failed" << fim_dendl;
+	  		fim_dout(7) << __func__ << " not sending MExportDirFinish, dest has failed" << fim_dendl;
 		}
 	}
 }
 
 void Fim::fim_export_finish(CDir *dir){
 
-	fim_dout(7) << __func__ << "Flow:[14] export finish on exporter side!" << fim_dendl;
+	fim_dout(7) << __func__ << " Flow:[14] export finish on exporter side!" << fim_dendl;
 	assert (g_conf->mds_kill_export_at != 12);
 	map<CDir*,Migrator::export_state_t>::iterator it = mig->export_state.find(dir);
 	if (it == mig->export_state.end()) {
-		fim_dout(7) << __func__ << "target must have failed, not sending final commit message.  export succeeded anyway." << fim_dendl;
+		fim_dout(7) << __func__ << " target must have failed, not sending final commit message.  export succeeded anyway." << fim_dendl;
 		return;
 	}
 
@@ -1210,7 +1210,7 @@ void Fim::fim_export_finish(CDir *dir){
 		mig->mds->send_message_mds(new MExportDirFinish(dir->dirfrag(), true, it->second.tid), it->second.peer);
 	} 
 	else {
-		fim_dout(7) << __func__ << "not sending MExportDirFinish last, dest has failed" << fim_dendl;
+		fim_dout(7) << __func__ << " not sending MExportDirFinish last, dest has failed" << fim_dendl;
 	}
 	assert(g_conf->mds_kill_export_at != 13);
 
@@ -1238,7 +1238,7 @@ void Fim::fim_export_finish(CDir *dir){
 	// discard delayed expires
 	mig->cache->discard_delayed_expire(dir);
 
-	fim_dout(7) << __func__ << "export_finish unfreezing" << fim_dendl;
+	fim_dout(7) << __func__ << " export_finish unfreezing" << fim_dendl;
 
 	// unfreeze tree, with possible subtree merge.
 	//  (we do this _after_ removing EXPORTBOUND pins, to allow merges)
@@ -1284,7 +1284,7 @@ void Fim::fim_export_finish(CDir *dir){
 }
 
 void Fim::fim_handle_export_finish(MExportDirFinish *m){
-	fim_dout(7) << __func__ << "Flow:[14] recv ExportFinish message!" << fim_dendl;
+	fim_dout(7) << __func__ << " Flow:[14] recv ExportFinish message!" << fim_dendl;
 	CDir *dir = mig->cache->get_dirfrag(m->get_dirfrag());
 	assert(dir);
 	fim_dout(7) << "handle_export_finish on " << *dir << (m->is_last() ? " last" : "") << fim_dendl;
