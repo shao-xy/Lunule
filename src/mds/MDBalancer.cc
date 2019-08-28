@@ -1209,8 +1209,9 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   }
   dout(15) << "   sum " << subdir_sum << " / " << dir_pop << dendl;
 
+  multimap<double,CDir*>::reverse_iterator it;
   if(coldcount>=10){
-  dout(1) << " MDS_COLD " << __func__ << "start cold balance" <<denl;
+  dout(1) << " MDS_COLD " << __func__ << "start cold balance" << dendl;
     for (it = verycold.rbegin();
        it != verycold.rend();
        ++it) {
@@ -1220,12 +1221,12 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     }
     return;
   }else{
-    dout(1) << " MDS_COLD " << __func__ << "unable to start cold balance" <<denl;
+    dout(1) << " MDS_COLD " << __func__ << "unable to start cold balance" <<dendl;
   }
 
 
   // grab some sufficiently big small items
-  multimap<double,CDir*>::reverse_iterator it;
+  
   for (it = smaller.rbegin();
        it != smaller.rend();
        ++it) {
