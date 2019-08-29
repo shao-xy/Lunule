@@ -1103,10 +1103,17 @@ void MDBalancer::try_rebalance(balance_state_t& state)
       find_exports(*pot, amount, exports, have, already_exporting);
       #endif
 
+      #ifdef MDS_COLDFIRST_BALANCER
+      dout(1) << " MDS_COLD " << __func__ << " 1: start to coldfirst migration " <<dendl;
+      break;
+      #endif
+
+      #ifndef MDS_COLDFIRST_BALANCER
       if (have > amount-MIN_OFFLOAD){
-        dout(1) << " MDS_COLD " << __func__ << " start to coldfirst migration " <<dendl;
+        dout(1) << " MDS_COLD " << __func__ << " 2: start to coldfirst migration " <<dendl;
         break;
       }
+      #endif
     }
     //fudge = amount - have;
 
