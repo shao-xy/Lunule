@@ -1766,7 +1766,7 @@ int Client::make_request(MetaRequest *request,
   lat -= request->sent_stamp;
   ldout(cct, 20) << "lat " << lat << dendl;
   #ifdef YOUXU_DEBUG
-  ldcout(cct, 0) << " filepath " << path << " lat(mds+net) " << lat << dendl;
+  ldout(cct, 0) << " filepath " << path << " lat(mds+net) " << lat << dendl;
   #endif 
   logger->tinc(l_c_lat, lat);
   logger->tinc(l_c_reply, lat);
