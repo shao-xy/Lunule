@@ -40,8 +40,8 @@ using std::vector;
 #include "common/errno.h"
 
 //#define MDS_MONITOR
+#include <unistd.h>
 #define MDS_COLDFIRST_BALANCER
-
 
 #define dout_context g_ceph_context
 #define dout_subsys ceph_subsys_mds
@@ -1150,10 +1150,10 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   int migcoldcount = 0;
 
   double dir_pop = dir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
-  dout(7) << " find_exports in " << dir_pop << " " << *dir << " need " << need << " (" << needmin << " - " << needmax << ")" << dendl;
+  dout(1) << " find_exports in " << dir_pop << " " << *dir << " need " << need << " (" << needmin << " - " << needmax << ")" << dendl;
   #ifdef MDS_MONITOR
-  dout(7) << " MDS_MONITOR " << __func__ << " needmax " << needmax << " needmin " << needmin << " midchunk " << midchunk << " minchunk " << minchunk << dendl;
-  dout(7) << " MDS_MONITOR " << __func__ << "(1) Find DIR " << *dir << " pop " << dir_pop << 
+  dout(1) << " MDS_MONITOR " << __func__ << " needmax " << needmax << " needmin " << needmin << " midchunk " << midchunk << " minchunk " << minchunk << dendl;
+  dout(1) << " MDS_MONITOR " << __func__ << "(1) Find DIR " << *dir << " pop " << dir_pop << 
   " amount " << amount << " have " << have << " need " << need << dendl;
   #endif  
 
@@ -1220,8 +1220,11 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     already_exporting.insert((*it).second);
     have += (*it).first;
     migcoldcount++;
-    if(migcoldcount>=10)return;
+    if(migcoldcount>=10){
+      dout(1) << " MDS_COLD " << __func__ << " find 10 cold fragments, stop " << dendl;
+      return;}
     }
+    sleep(100);
     return;
   }else{
     dout(1) << " MDS_COLD " << __func__ << " unable to start cold balance" <<dendl;
