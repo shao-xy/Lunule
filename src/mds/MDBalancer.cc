@@ -1181,7 +1181,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       dout(15) << "   subdir pop " << pop << " " << *subdir << dendl;
 
 
-      if (pop < minchunk) {
+      if (pop < minchunk*10) {
       verycold.insert(pair<double,CDir*>(pop, subdir));
       coldcount++;
       dout(1) << " MDS_COLD " << __func__ << " find a clod " << *((*it).second) << " pop " << (*it).first << dendl;
@@ -1224,7 +1224,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       dout(1) << " MDS_COLD " << __func__ << " find 10 cold fragments, stop " << dendl;
       return;}
     }
-    sleep(100);
+//    sleep(100);
     return;
   }else{
     dout(1) << " MDS_COLD " << __func__ << " unable to start cold balance" <<dendl;
