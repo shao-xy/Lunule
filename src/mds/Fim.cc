@@ -61,6 +61,8 @@
 
 #include <fstream>
 
+#define FIM_UNLOCKING
+
 #define dout_context g_ceph_context
 #define dout_subsys ceph_subsys_mds_balancer
 #undef dout_prefix
@@ -330,6 +332,7 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 		return;
 	}
 
+	#ifndef FIM_UNLOCKING
 	// locking
 	set<SimpleLock*> rdlocks;
 	set<SimpleLock*> xlocks;
@@ -346,6 +349,7 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 			mig->export_try_cancel(dir);
 		return;
 	}
+	#endif
 
 	// discovering step
 	assert(g_conf->mds_kill_export_at != 1);
