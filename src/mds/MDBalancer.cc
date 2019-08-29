@@ -1103,8 +1103,10 @@ void MDBalancer::try_rebalance(balance_state_t& state)
       find_exports(*pot, amount, exports, have, already_exporting);
       #endif
 
-      if (have > amount-MIN_OFFLOAD)
-	break;
+      if (have > amount-MIN_OFFLOAD){
+        dout(1) << " MDS_COLD " << __func__ << " start to coldfirst migration " <<dendl;
+        break;
+      }
     }
     //fudge = amount - have;
 
@@ -1178,13 +1180,13 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       // how popular?
       double pop = subdir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
       subdir_sum += pop;
-      dout(15) << "   subdir pop " << pop << " " << *subdir << dendl;
+      dout(1) << "   subdir pop " << pop << " " << *subdir << dendl;
 
 
       if (pop < minchunk*10) {
       verycold.insert(pair<double,CDir*>(pop, subdir));
       coldcount++;
-      dout(1) << " MDS_COLD " << __func__ << " find a clod " << *((*it).second) << " pop " << (*it).first << dendl;
+      dout(1) << " MDS_COLD " << __func__ << " find a clod " << *((*it).second) << " pop: " << pop << dendl;
       }
 
       // lucky find?
@@ -1204,8 +1206,11 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     bigger_rep.push_back(subdir);
   else
     bigger_unrep.push_back(subdir);
-      } else
-  smaller.insert(pair<double,CDir*>(pop, subdir));
+      } else{
+    dout(1) << " MDS_COLD " << __func__ << " find a smaller " << *((*it).second) << " pop: " << pop << dendl;
+    smaller.insert(pair<double,CDir*>(pop, subdir));
+    }
+
     }
   }
   dout(15) << "   sum " << subdir_sum << " / " << dir_pop << dendl;
