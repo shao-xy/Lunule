@@ -39,7 +39,7 @@ using std::vector;
 #include "common/config.h"
 #include "common/errno.h"
 
-#define MDS_MONITOR
+//#define MDS_MONITOR
 
 #define dout_context g_ceph_context
 #define dout_subsys ceph_subsys_mds

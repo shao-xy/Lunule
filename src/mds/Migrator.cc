@@ -2349,7 +2349,7 @@ void Migrator::export_finish(CDir *dir)
     }
     
     if(export_breakdown_endode.count(dir))
-      dout(6) << " MDS_MONITOR_MIGRATOR " << __func__ << " Export_dir END_ALL_FINISH on DIR " << *dir << " at " << export_record_finish[dir] 
+      dout(0) << " MDS_MONITOR_MIGRATOR " << __func__ << " Export_dir END_ALL_FINISH on DIR " << *dir << " at " << export_record_finish[dir] 
         << " number_dentries " << num_dentries
         << " latency_discover " <<  lat_discover
         << " latency_prepare " << lat_prepare
@@ -2361,7 +2361,7 @@ void Migrator::export_finish(CDir *dir)
         << " rtt_export " << rtt_export
         << " latency_encode " << export_breakdown_endode[dir] << dendl;
     else
-      dout(6) << " MDS_MONITOR_MIGRATOR " << __func__ << " Export_dir END_ALL_FINISH on DIR " << *dir << " at " << export_record_finish[dir] 
+      dout(0) << " MDS_MONITOR_MIGRATOR " << __func__ << " Export_dir END_ALL_FINISH on DIR " << *dir << " at " << export_record_finish[dir] 
         << " number_dentries " << num_dentries
         << " latency_discover " <<  lat_discover
         << " latency_prepare " << lat_prepare

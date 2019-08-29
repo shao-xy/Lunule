@@ -24,7 +24,7 @@ using std::list;
 
 struct IPC_entity_t {
 	mds_rank_t rank;
-	int msg_id;
+	int ipc_id;
 };
 
 class IPCMessenger;
@@ -33,7 +33,7 @@ class IPCWorker : public Thread {
 private:
 	IPCMessenger * msgr;
 	mds_rank_t src;
-	int msg_id;
+	int ipc_id;
 	Mutex mutex;
 	
 	//  Deprecated: connection may change from time to time
@@ -47,10 +47,10 @@ private:
 public:
 	explicit IPCWorker(IPCMessenger * msgr = NULL) : msgr(msgr), mutex("IPCWorker::mutex") {}
 	explicit IPCWorker(IPCMessenger * msgr, mds_rank_t src)
-		: msgr(msgr), src(src), msg_id(-1),
+		: msgr(msgr), src(src), ipc_id(-1),
 		mutex("IPCWorker(" + std::to_string((int)src) + ")::mutex") {}
 
-	int get_msg_id() { return msg_id; }
+	int get_ipc_id() { return ipc_id; }
 
 	void * entry() override;
 };
@@ -59,7 +59,7 @@ class IPCProcessor : public Thread {
 private:
 	IPCMessenger * msgr;
 
-	mds_rank_t accept(int msg_id);
+	mds_rank_t accept(int ipc_id);
 	
 public:
 	explicit IPCProcessor(IPCMessenger * msgr = NULL) : msgr(msgr) {}
@@ -77,11 +77,11 @@ private:
 
 	size_t msg_size; // now we only support default 255
 
-	int get_connected_msg_id(mds_rank_t mds);
+	int get_connected_ipc_id(mds_rank_t mds);
 	int create_entity(mds_rank_t mds);
 
-	bool do_sendmsg(int msg_id, char * buffer, size_t len);
-	bool do_sendmsg_mds(int msg_id, const ceph_msg_header& header,
+	bool do_sendmsg(int ipc_id, char * buffer, size_t len);
+	bool do_sendmsg_mds(int ipc_id, const ceph_msg_header& header,
 						const ceph_msg_footer& footer, bufferlist blist);
 
 public:
