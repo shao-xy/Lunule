@@ -1160,6 +1160,8 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
 
   double dir_pop = dir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
   dout(1) << " find_exports in " << dir_pop << " " << *dir << " need " << need << " (" << needmin << " - " << needmax << ")" << dendl;
+  
+  dout(1) << " MDS_MONITOR " << __func__ << " needmax " << needmax << " needmin " << needmin << " midchunk " << midchunk << " minchunk " << minchunk << dendl;
   #ifdef MDS_MONITOR
   dout(1) << " MDS_MONITOR " << __func__ << " needmax " << needmax << " needmin " << needmin << " midchunk " << midchunk << " minchunk " << minchunk << dendl;
   dout(1) << " MDS_MONITOR " << __func__ << "(1) Find DIR " << *dir << " pop " << dir_pop << 
@@ -1187,7 +1189,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       // how popular?
       double pop = subdir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
       subdir_sum += pop;
-      dout(1) << "   subdir pop " << pop << " " << *subdir << dendl;
+      dout(1) << " subdir pop " << pop << " " << *subdir << dendl;
 
 
       if (pop < minchunk*10 && pop > 0) {
