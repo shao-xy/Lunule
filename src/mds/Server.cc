@@ -3125,7 +3125,7 @@ void Server::handle_client_getattr(MDRequestRef& mdr, bool is_lookup)
 
   #ifdef YOUXU_DEBUG
   utime_t lat_cache, lat_lock, lat_hot, lat_reply;
-  filepath& path = req->get_filepath();
+  const filepath& path = req->get_filepath();
   #endif
   if (req->get_filepath().depth() == 0 && is_lookup) {
     // refpath can't be empty for lookup but it can for
