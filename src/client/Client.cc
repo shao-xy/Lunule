@@ -105,6 +105,8 @@
 
 #define TRACE_COLLECTION
 
+#define YOUXU_DEBUG
+
 
 #undef dout_prefix
 #define dout_prefix *_dout << "client." << whoami << " "
@@ -1633,6 +1635,9 @@ int Client::make_request(MetaRequest *request,
   ceph_tid_t tid = ++last_tid;
   request->set_tid(tid);
 
+  #ifdef YOUXU_DEBUG
+  filepath& path = request->get_filepath();
+  #endif
   // and timestamp
   request->op_stamp = ceph_clock_now();
 
@@ -1760,6 +1765,9 @@ int Client::make_request(MetaRequest *request,
   utime_t lat = ceph_clock_now();
   lat -= request->sent_stamp;
   ldout(cct, 20) << "lat " << lat << dendl;
+  #ifdef YOUXU_DEBUG
+  ldcout(cct, 0) << " filepath " << path << " lat(mds+net) " << lat << dendl;
+  #endif 
   logger->tinc(l_c_lat, lat);
   logger->tinc(l_c_reply, lat);
 
