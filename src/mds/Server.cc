@@ -75,6 +75,9 @@ using namespace std;
 #undef dout_prefix
 #define dout_prefix *_dout << "mds." << mds->get_nodeid() << ".server "
 
+#define YOUXU_DEBUG
+
+
 class ServerContext : public MDSInternalContextBase {
   protected:
   Server *server;
@@ -3120,6 +3123,10 @@ void Server::handle_client_getattr(MDRequestRef& mdr, bool is_lookup)
   MClientRequest *req = mdr->client_request;
   set<SimpleLock*> rdlocks, wrlocks, xlocks;
 
+  #ifdef YOUXU_DEBUG
+  utime_t lat_cache, lat_lock, lat_hot, lat_reply;
+  filepath& path = req->get_filepath();
+  #endif
   if (req->get_filepath().depth() == 0 && is_lookup) {
     // refpath can't be empty for lookup but it can for
     // getattr (we do getattr with empty refpath for mount of '/')
@@ -3127,7 +3134,14 @@ void Server::handle_client_getattr(MDRequestRef& mdr, bool is_lookup)
     return;
   }
 
+  #ifdef YOUXU_DEBUG
+  utime_t begin_cache = ceph_clock_now();
+  #endif
   CInode *ref = rdlock_path_pin_ref(mdr, 0, rdlocks, false, false, NULL, !is_lookup);
+  #ifdef YOUXU_DEBUG
+  utime_t end_cache = ceph_clock_now();
+  lat_cache = end_cache - begin_cache;
+  #endif
   if (!ref) return;
 
   /*
@@ -3138,6 +3152,9 @@ void Server::handle_client_getattr(MDRequestRef& mdr, bool is_lookup)
    * handling this case here is easier than weakening rdlock
    * semantics... that would cause problems elsewhere.
    */
+  #ifdef YOUXU_DEBUG
+  utime_t begin_lock = ceph_clock_now();
+  #endif
   client_t client = mdr->get_client();
   int issued = 0;
   Capability *cap = ref->get_client_cap(client);
@@ -3173,20 +3190,41 @@ void Server::handle_client_getattr(MDRequestRef& mdr, bool is_lookup)
 
   if (!check_access(mdr, ref, MAY_READ))
     return;
+  #ifdef YOUXU_DEBUG
+  utime_t end_lock = ceph_clock_now();
+  lat_lock = end_lock - begin_lock;
+  #endif
 
   // note which caps are requested, so we return at least a snapshot
   // value for them.  (currently this matters for xattrs and inline data)
   mdr->getattr_caps = mask;
 
+  #ifdef YOUXU_DEBUG
+  utime_t begin_hot = ceph_clock_now();
+  #endif
+
   mds->balancer->hit_inode(ceph_clock_now(), ref, META_POP_IRD,
 			   req->get_source().num());
+
+  #ifdef YOUXU_DEBUG
+  utime_t end_hot = ceph_clock_now();
+  lat_hot = end_hot - begin_hot;
+  #endif
 
   // reply
   dout(10) << "reply to stat on " << *req << dendl;
   mdr->tracei = ref;
   if (is_lookup)
     mdr->tracedn = mdr->dn[0].back();
+  #ifdef YOUXU_DEBUG
+  utime_t begin_reply = ceph_clock_now();
+  #endif
   respond_to_request(mdr, 0);
+  #ifdef YOUXU_DEBUG
+  utime_t end_reply = ceph_clock_now();
+  lat_reply = end_reply - begin_reply;
+  dout(0) << __func__ << " " << path << " lat_cache " << lat_cache << " lat_lock " << lat_lock << " lat_hot " << lat_hot << " lat_reply " << lat_reply << dendl;
+  #endif
 }
 
 struct C_MDS_LookupIno2 : public ServerContext {
