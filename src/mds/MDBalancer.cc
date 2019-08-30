@@ -1242,11 +1242,11 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     dout(1) << " MDS_COLD " << __func__ << " unable to start cold balance" <<dendl;
   }
 
-  dout(1) << " MDS_COLD " << __func__ << " export "<< coldcountl <<" cold" << " start to find smaller " <<dendl;
+  dout(1) << " MDS_COLD " << __func__ << " export "<< coldcount <<" cold" << " start to find smaller " <<dendl;
 
 
   // grab some sufficiently big small items
-  multimap<double,CDir*>::iterator it;
+  //multimap<double,CDir*>::iterator it;
   for (it = smaller.begin();
        it != smaller.end();
        ++it) {
