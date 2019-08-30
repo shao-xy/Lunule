@@ -97,7 +97,7 @@ private:
                     double amount,
                     list<CDir*>& exports,
                     double& have,
-                    set<CDir*>& already_exporting
+                    set<CDir*>& already_exporting,
                     bool first_time);
   void find_exports(CDir *dir,
                     double amount,
