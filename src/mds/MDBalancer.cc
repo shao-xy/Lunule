@@ -1270,7 +1270,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     if (have > needmin || first_time != true)
       return;
 
-    for (multimap<double,CDir*>::reverse_iterator it; = smaller.rbegin();
+    for (multimap<double,CDir*>::reverse_iterator it = smaller.rbegin();
        it != smaller.rend();
        ++it) {
     dout(1) << " MDS_COLD " << __func__ << " descending into a smaller big " << *((*it).second) << dendl;
