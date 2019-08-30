@@ -93,7 +93,7 @@ private:
   int localize_balancer();
   void send_heartbeat();
   void handle_heartbeat(MHeartbeat *m);
-  void find_exports_coldfirst(bool first_time, CDir *dir,
+  void find_exports_coldfirst(int first_time, CDir *dir,
                     double amount,
                     list<CDir*>& exports,
                     double& have,
