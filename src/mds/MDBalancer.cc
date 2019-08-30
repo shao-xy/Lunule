@@ -1223,11 +1223,11 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   }
   dout(15) << "   sum " << subdir_sum << " / " << dir_pop << dendl;
 
-  multimap<double,CDir*>::reverse_iterator it;
+  multimap<double,CDir*>::iterator it;
   if(coldcount>0){
   dout(1) << " MDS_COLD " << __func__ << " cold first start " << dendl;
-    for (it = verycold.rbegin();
-       it != verycold.rend();
+    for (it = verycold.begin();
+       it != verycold.end();
        ++it) {
     exports.push_back((*it).second);
     already_exporting.insert((*it).second);
@@ -1246,7 +1246,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
 
 
   // grab some sufficiently big small items
-  
+  multimap<double,CDir*>::iterator it;
   for (it = smaller.begin();
        it != smaller.end();
        ++it) {
