@@ -1162,6 +1162,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   dout(1) << " find_exports in " << dir_pop << " " << *dir << " need " << need << " (" << needmin << " - " << needmax << ")" << dendl;
   
   dout(1) << " MDS_MONITOR " << __func__ << " needmax " << needmax << " needmin " << needmin << " midchunk " << midchunk << " minchunk " << minchunk << dendl;
+  dout(1) << " MDS_MONITOR " << __func__ << "(1) Find DIR " << *dir << " pop " << dir_pop << 
   #ifdef MDS_MONITOR
   dout(1) << " MDS_MONITOR " << __func__ << " needmax " << needmax << " needmin " << needmin << " midchunk " << midchunk << " minchunk " << minchunk << dendl;
   dout(1) << " MDS_MONITOR " << __func__ << "(1) Find DIR " << *dir << " pop " << dir_pop << 
@@ -1234,40 +1235,45 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     already_exporting.insert((*it).second);
     have += (*it).first;
     migcoldcount++;
-    if(migcoldcount>=10){
-      dout(1) << " MDS_COLD " << __func__ << " find 10 cold fragments, stop " << dendl;
+    if(migcoldcount>1000){
+      dout(1) << " MDS_COLD " << __func__ << " find 1000 cold fragments, stop " << dendl;
       return;}
     }
-//    sleep(100);
-    return;
+//    sleep(100)
   }else{
     dout(1) << " MDS_COLD " << __func__ << " unable to start cold balance" <<dendl;
   }
 
+  dout(1) << " MDS_COLD " << __func__ << " export "<< coldcountl <<" cold" << " start to find smaller " <<dendl;
+
 
   // grab some sufficiently big small items
   
-  for (it = smaller.rbegin();
-       it != smaller.rend();
+  for (it = smaller.begin();
+       it != smaller.end();
        ++it) {
 
     #ifdef MDS_MONITOR
     dout(7) << " MDS_MONITOR " << __func__ << "(3) See smaller DIR " << *((*it).second) << " pop " << (*it).first << dendl;
     #endif
 
-    if ((*it).first < midchunk)
+    if ((*it).first < midchunk && migcoldcount<=1000 )
       break;  // try later
 
     dout(7) << "   taking smaller " << *(*it).second << dendl;
     #ifdef MDS_MONITOR
     dout(7) << " MDS_MONITOR " << __func__ << "(3) taking smaller DIR " << *((*it).second) << " pop " << (*it).first << dendl;
     #endif
+    migcoldcount++;
     exports.push_back((*it).second);
     already_exporting.insert((*it).second);
     have += (*it).first;
     if (have > needmin)
       return;
   }
+
+  dout(1) << " MDS_COLD " << __func__ << " export " << migcoldcount << " small and cold, stop " <<dendl;
+  return;
 
   // apprently not enough; drill deeper into the hierarchy (if non-replicated)
   for (list<CDir*>::iterator it = bigger_unrep.begin();
@@ -1320,6 +1326,7 @@ void MDBalancer::find_exports(CDir *dir,
                               double& have,
                               set<CDir*>& already_exporting)
 {
+  dout(0) << " [WAN]: old export was happen " << dendl;
   double need = amount - have;
   if (need < amount * g_conf->mds_bal_min_start)
     return;   // good enough!
