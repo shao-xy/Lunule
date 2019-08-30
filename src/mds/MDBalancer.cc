@@ -1272,11 +1272,17 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   }
 
   dout(1) << " MDS_COLD " << __func__ << " export " << migcoldcount << " small and cold, stop " <<dendl;
-
-  if (have < needmin && first_time){
+  /*for (it = smaller.begin();
+       it != smaller.end() && migcoldcount<=1000;
+       ++it) {
+    if (have < needmin && first_time){
     find_exports_coldfirst((*it).second, amount, exports, have, already_exporting, false);
-  }
+    }else{
+    return;
+    }
+    }
   return;
+  */
 
   // apprently not enough; drill deeper into the hierarchy (if non-replicated)
   /*
