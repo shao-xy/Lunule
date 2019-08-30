@@ -1097,7 +1097,7 @@ void MDBalancer::try_rebalance(balance_state_t& state)
       if ((*pot)->get_inode()->is_stray()) continue;
 
       #ifdef MDS_COLDFIRST_BALANCER
-      find_exports_coldfirst(*pot, amount, exports, have, already_exporting);
+      find_exports_coldfirst(*pot, amount, exports, have, already_exporting, true);
       #endif
       #ifndef MDS_COLDFIRST_BALANCER
       find_exports(*pot, amount, exports, have, already_exporting);
@@ -1142,7 +1142,8 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
                               double amount,
                               list<CDir*>& exports,
                               double& have,
-                              set<CDir*>& already_exporting)
+                              set<CDir*>& already_exporting, 
+                              bool first_time)
 {
   double need = amount - have;
   if (need < amount * g_conf->mds_bal_min_start)
@@ -1159,9 +1160,9 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   int migcoldcount = 0;
 
   double dir_pop = dir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
-  dout(1) << " find_exports in " << *dir << " pop " << dir_pop << " amount " << amount << " have " << have << " need " << need << " in (" << needmin << " - " << needmax << ")" << dendl;
+  dout(1) << " MDS_COLD " << __func__ << " find_exports in " << *dir << " pop " << dir_pop << " amount " << amount << " have " << have << " need " << need << " in (" << needmin << " - " << needmax << ")" << dendl;
   
-  dout(1) << " MDS_MONITOR " << __func__ << " needmax " << needmax << " needmin " << needmin << " midchunk " << midchunk << " minchunk " << minchunk << dendl;
+  dout(1) << " MDS_COLD " << __func__ << " needmax " << needmax << " needmin " << needmin << " midchunk " << midchunk << " minchunk " << minchunk << dendl;
   #ifdef MDS_MONITOR
   dout(1) << " MDS_MONITOR " << __func__ << " needmax " << needmax << " needmin " << needmin << " midchunk " << midchunk << " minchunk " << minchunk << dendl;
   dout(1) << " MDS_MONITOR " << __func__ << "(1) Find DIR " << *dir << " pop " << dir_pop << " amount " << amount << " have " << have << " need " << need << dendl;
@@ -1248,14 +1249,14 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   // grab some sufficiently big small items
   //multimap<double,CDir*>::iterator it;
   for (it = smaller.begin();
-       it != smaller.end();
+       it != smaller.end() && migcoldcount<=1000 ;
        ++it) {
 
     #ifdef MDS_MONITOR
     dout(7) << " MDS_MONITOR " << __func__ << "(3) See smaller DIR " << *((*it).second) << " pop " << (*it).first << dendl;
     #endif
 
-    if ((*it).first < midchunk && migcoldcount<=1000 )
+    if ((*it).first < midchunk)
       break;  // try later
 
     dout(7) << "   taking smaller " << *(*it).second << dendl;
@@ -1271,6 +1272,10 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   }
 
   dout(1) << " MDS_COLD " << __func__ << " export " << migcoldcount << " small and cold, stop " <<dendl;
+
+  if (have < needmin && first_time){
+    find_exports_coldfirst(*it, amount, exports, have, already_exporting, false);
+  }
   return;
 
   // apprently not enough; drill deeper into the hierarchy (if non-replicated)
