@@ -1274,7 +1274,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
        it != smaller.rend();
        ++it) {
     dout(1) << " MDS_COLD " << __func__ << " descending into a smaller big " << *((*it).second) << dendl;
-    find_exports((*it).second, amount, exports, have, already_exporting, false);
+    find_exports_coldfirst((*it).second, amount, exports, have, already_exporting, false);
     if (have > needmin){
       dout(1) << " MDS_COLD " << __func__ << " good" <<dendl;
       return;
