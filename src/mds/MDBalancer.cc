@@ -1267,8 +1267,19 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     exports.push_back((*it).second);
     already_exporting.insert((*it).second);
     have += (*it).first;
-    if (have > needmin)
+    if (have > needmin || first_time != true)
       return;
+
+    for (multimap<double,CDir*>::reverse_iterator it; = smaller.rbegin();
+       it != smaller.rend();
+       ++it) {
+    dout(1) << " MDS_COLD " << __func__ << " descending into a smaller big " << *((*it).second) << dendl;
+    find_exports((*it).second, amount, exports, have, already_exporting, false);
+    if (have > needmin){
+      dout(1) << " MDS_COLD " << __func__ << " good" <<dendl;
+      return;
+    }
+  }
   }
 
   dout(1) << " MDS_COLD " << __func__ << " export " << migcoldcount << " small and cold, stop " <<dendl;
