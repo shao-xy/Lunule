@@ -1274,6 +1274,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   return;
 
   // apprently not enough; drill deeper into the hierarchy (if non-replicated)
+  /*
   for (list<CDir*>::iterator it = bigger_unrep.begin();
        it != bigger_unrep.end();
        ++it) {
@@ -1313,6 +1314,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     if (have > needmin)
       return;
   }
+  */
 
 }
 #endif
