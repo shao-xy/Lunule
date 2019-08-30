@@ -81,17 +81,7 @@
 #define dout_prefix *_dout << "mds." << mds->get_nodeid() << ".migrator "
 
 // -- cons --
-Migrator::Migrator(MDSRank *m, MDCache *c) : mds(m), cache(c) {
-  #ifdef MDS_MIGRATOR_IPC
-  pthread_t tid_ipc_migrate;
-  int res = pthread_create(&tid_ipc_migrate, NULL, ipc_migrator, this);
-  if(res < 0){
-    dout(0) << __func__ << " create ipc thread failed." << dendl;
-    exit(-1); 
-  }
-  pthread_detach(tid_ipc_migrate);
-  #endif
-}
+Migrator::Migrator(MDSRank *m, MDCache *c) : mds(m), cache(c) { }
 
 class MigratorContext : public MDSInternalContextBase {
 protected:
@@ -723,10 +713,12 @@ void Migrator::maybe_do_queued_export()
 
     dout(0) << "nicely exporting to mds." << dest << " " << *dir << dendl;
 
+    #if (defined MDS_MONITOR) || (defined MDS_MONITOR_MIGRATOR_LAT)
+    export_record_start[dir] = ceph_clock_now();
+    #endif
     #ifdef MDS_MONITOR_MIGRATOR
     dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (2) nicely exporting to mds." << dest << " " << *dir << dendl;
     dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (2) export_state.size " << export_state.size() << dendl;
-    export_record_start[dir] = ceph_clock_now();
     dout(6) << " MDS_MONITOR_MIGRATOR " << __func__ << " Export_dir START on DIR " << *dir << " at " << export_record_start[dir] << dendl;
     #endif
 
@@ -992,6 +984,8 @@ void Migrator::dispatch_export_dir(MDRequestRef& mdr, int count)
   dout(7) << __func__ << " Youxu [1]send a ExportDirDiscover message!" << dendl;
   #ifdef MDS_MONITOR_MIGRATOR
   dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (3) send a ExportDirDiscover message on path " << path << " DIR " << *dir << dendl;
+  #endif
+  #if (defined MDS_MONITOR) || (defined MDS_MONITOR_MIGRATOR_LAT)
   rtt_discover_start[dir] = ceph_clock_now();
   #endif
   mds->send_message_mds(discover, dest);
@@ -1021,8 +1015,10 @@ void Migrator::handle_export_discover_ack(MExportDirDiscoverAck *m)
   dout(7) << "export_discover_ack from " << m->get_source()
 	  << " on " << *dir << dendl;
   dout(7) << __func__ << " Youxu [4]get a ExportDirDiscoverACK message!" << dendl;
-  #ifdef MDS_MONITOR_MIGRATOR
+  #if (defined MDS_MONITOR) || (defined MDS_MONITOR_MIGRATOR_LAT)
   rtt_discover_finish[dir] = ceph_clock_now();
+  #endif
+  #ifdef MDS_MONITOR_MIGRATOR
   dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (1) Get a ExportDirDiscoverACK message on " << *dir << dendl;
   #endif
   mds->hit_export_target(now, dest, -1);
@@ -1055,8 +1051,10 @@ void Migrator::handle_export_discover_ack(MExportDirDiscoverAck *m)
     }
   }
   
-  #ifdef MDS_MONITOR_MIGRATOR
+  #if (defined MDS_MONITOR) || (defined MDS_MONITOR_MIGRATOR_LAT)
   export_record_end_discover[dir] = ceph_clock_now();
+  #endif
+  #ifdef MDS_MONITOR_MIGRATOR
   dout(6) << " MDS_MONITOR_MIGRATOR " << __func__ << " Export_dir END_DISCOVER on DIR " << *dir << " at " << export_record_end_discover[dir] << dendl;
   #endif
   m->put();  // done
@@ -1282,6 +1280,8 @@ void Migrator::export_frozen(CDir *dir, uint64_t tid)
   dout(7) << __func__ << " Youxu [5]send prepare message!" << dendl;
   #ifdef MDS_MONITOR_MIGRATOR
   dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (6) send a prepare message!" << dendl;
+  #endif
+  #if (defined MDS_MONITOR) || (defined MDS_MONITOR_MIGRATOR_LAT)
   rtt_prepare_start[dir] = ceph_clock_now();
   #endif
   mds->send_message_mds(prep, it->second.peer);
@@ -1416,8 +1416,10 @@ void Migrator::handle_export_prep_ack(MExportDirPrepAck *m)
   dout(7) << "export_prep_ack " << *dir << dendl;
   dout(7) << __func__ << " Youxu [8]get a prepare ack message!" << dendl;
 
-  #ifdef MDS_MONITOR_MIGRATOR
+  #if (defined MDS_MONITOR) || (defined MDS_MONITOR_MIGRATOR_LAT)
   rtt_prepare_finish[dir] = ceph_clock_now();
+  #endif
+  #ifdef MDS_MONITOR_MIGRATOR
   dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (1) start handle export prep ack: dir: "<< *dir << dendl;
   #endif 
 
@@ -1496,8 +1498,10 @@ void Migrator::handle_export_prep_ack(MExportDirPrepAck *m)
 
   assert(g_conf->mds_kill_export_at != 6);
 
-  #ifdef MDS_MONITOR_MIGRATOR
+  #if (defined MDS_MONITOR) || (defined MDS_MONITOR_MIGRATOR_LAT)
   export_record_end_prepare[dir] = ceph_clock_now();
+  #endif
+  #ifdef MDS_MONITOR_MIGRATOR
   dout(6) << " MDS_MONITOR_MIGRATOR " << __func__ << " Export_dir END_PREPARE on DIR " << *dir << " at " << export_record_end_prepare[dir] << dendl;
   #endif
 
@@ -1587,9 +1591,11 @@ void Migrator::export_go_synced(CDir *dir, uint64_t tid)
   utime_t now = ceph_clock_now();
   mds->balancer->subtract_export(dir, now);
   
+  #if (defined MDS_MONITOR) || (defined MDS_MONITOR_MIGRATOR_LAT)
+    utime_t encode_start = ceph_clock_now();
+  #endif
   #ifdef MDS_MONITOR_MIGRATOR
     dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << "(3) subtract exported dir " << *dir << dendl;
-    utime_t encode_start = ceph_clock_now();
   #endif 
 
   // fill export message with cache data
@@ -1621,9 +1627,9 @@ void Migrator::export_go_synced(CDir *dir, uint64_t tid)
        ++p)
     req->add_export((*p)->dirfrag());
 
-  #ifdef MDS_MONITOR_MIGRATOR
+  #if (defined MDS_MONITOR) || (defined MDS_MONITOR_MIGRATOR_LAT)
   utime_t encode_end = ceph_clock_now();
-  export_breakdown_endode[dir] = (encode_end - encode_start);
+  export_breakdown_encode[dir] = (encode_end - encode_start);
   rtt_export_start[dir] = ceph_clock_now();
   #endif
 
@@ -1942,13 +1948,17 @@ void Migrator::handle_export_ack(MExportDirAck *m)
   assert(dir);
   assert(dir->is_frozen_tree_root());  // i'm exporting!
 
-  #ifdef MDS_MONITOR_MIGRATOR
+  #if (defined MDS_MONITOR) || (defined MDS_MONITOR_MIGRATOR_LAT)
   rtt_export_finish[dir] = ceph_clock_now();
+  #endif
+  #ifdef MDS_MONITOR_MIGRATOR
   dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (1) START handle export dir ack, dir : " << *dir << dendl;
   #endif 
 
-  #ifdef MDS_MONITOR_MIGRATOR
+  #if (defined MDS_MONITOR) || (defined MDS_MONITOR_MIGRATOR_LAT)
   export_record_end_export[dir] = ceph_clock_now();
+  #endif
+  #ifdef MDS_MONITOR_MIGRATOR
   dout(6) << " MDS_MONITOR_MIGRATOR " << __func__ << " Export_dir END_EXPORT on DIR " << *dir << " at " << export_record_end_export[dir] << dendl;
   #endif
 
@@ -2332,7 +2342,7 @@ void Migrator::export_finish(CDir *dir)
     mut->cleanup();
   }
   
-  #ifdef MDS_MONITOR_MIGRATOR
+  #if (defined MDS_MONITOR) || (defined MDS_MONITOR_MIGRATOR_LAT)
   export_record_finish[dir] = ceph_clock_now();
   if(export_record_start.count(dir) && export_record_end_discover.count(dir) && export_record_end_prepare.count(dir) && export_record_end_export.count(dir)){
     utime_t lat_discover = export_record_end_discover[dir] - export_record_start[dir];
@@ -2348,7 +2358,7 @@ void Migrator::export_finish(CDir *dir)
       rtt =  rtt_discover + rtt_prepare + rtt_export;
     }
     
-    if(export_breakdown_endode.count(dir))
+    if(export_breakdown_encode.count(dir))
       dout(0) << " MDS_MONITOR_MIGRATOR " << __func__ << " Export_dir END_ALL_FINISH on DIR " << *dir << " at " << export_record_finish[dir] 
         << " number_dentries " << num_dentries
         << " latency_discover " <<  lat_discover
@@ -2359,7 +2369,7 @@ void Migrator::export_finish(CDir *dir)
         << " rtt_discover " << rtt_discover
         << " rtt_prepare " << rtt_prepare
         << " rtt_export " << rtt_export
-        << " latency_encode " << export_breakdown_endode[dir] << dendl;
+        << " latency_encode " << export_breakdown_encode[dir] << dendl;
     else
       dout(0) << " MDS_MONITOR_MIGRATOR " << __func__ << " Export_dir END_ALL_FINISH on DIR " << *dir << " at " << export_record_finish[dir] 
         << " number_dentries " << num_dentries
@@ -2881,7 +2891,7 @@ void Migrator::handle_export_dir(MExportDir *m)
   le->cmapv = mds->server->prepare_force_open_sessions(onlogged->imported_client_map, onlogged->sseqmap);
   le->client_map.claim(m->client_map);
 
-  #ifdef MDS_MONITOR_MIGRATOR
+  #if (defined MDS_MONITOR) || (defined MDS_MONITOR_MIGRATOR_LAT)
   utime_t decode_start = ceph_clock_now();
   #endif
   bufferlist::iterator blp = m->export_data.begin();
@@ -2904,9 +2914,11 @@ void Migrator::handle_export_dir(MExportDir *m)
   }
   dout(10) << " " << m->bounds.size() << " imported bounds" << dendl;
   
-  #ifdef MDS_MONITOR_MIGRATOR
+  #if (defined MDS_MONITOR) || (defined MDS_MONITOR_MIGRATOR_LAT)
   utime_t decode_end = ceph_clock_now();
   export_breakdown_decode[dir] = (decode_end - decode_start);
+  #endif
+  #ifdef MDS_MONITOR_MIGRATOR
   dout(6) << " MDS_MONITOR_MIGRATOR " << __func__ << " Export_dir DECODE_FINISH on DIR " << *dir << " at " << decode_end
         << " latency_decode " << export_breakdown_decode[dir] << dendl;
   #endif

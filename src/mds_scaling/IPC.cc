@@ -264,6 +264,8 @@ Message * IPCWorker::try_recvmsg()
 void * IPCWorker::entry() {
 	int ipckey = IPC_getkey(src, msgr->get_nodeid());
 
+	dout(0) << "IPCWorker " << msgr->get_nodeid() << " starts listening for new messages." << dendl;
+
 	ipc_id = msgget(ipckey, IPC_CREAT | 0666);
 	if (ipc_id == -1) {
 		dout(5) << "Fatal: Create IPC pipe failed." << dendl;
@@ -310,7 +312,10 @@ mds_rank_t IPCProcessor::accept(int ipc_id)
 void * IPCProcessor::entry()
 {
 	assert(msgr);
+
 	int ipckey = IPC_get_listenkey(msgr->get_nodeid());
+
+	dout(0) << "IPCProcessor listening on IPC tunnel " << ipckey << dendl;
 
 	int ipc_id = msgget(ipckey, IPC_CREAT | 0666);
 	if (ipc_id == -1) {
@@ -502,13 +507,13 @@ IPCMessenger::~IPCMessenger()
 int IPCMessenger::create_entity(mds_rank_t target)
 {
 	assert(msgr_mutex.is_locked());
-	dout(20) << __func__ << " target: " << target << dendl;
+	dout(0) << __func__ << " target: " << target << dendl;
 
 	mds_rank_t my_rank = mdsrank->get_nodeid();
 	
 	if (get_connected_ipc_id(target) != -1) {
 		// already exists, abort
-		dout(20) << __func__ << " target already exists." << dendl;
+		dout(0) << __func__ << " target already exists." << dendl;
 		return false;
 	}
 
@@ -540,7 +545,7 @@ int IPCMessenger::create_entity(mds_rank_t target)
 		dout(5) << "Create IPC pipe failed, returned to normal network stack." << dendl;
 		return false;
 	}
-	dout(20) << __func__ << "Get IPC Message Queue ID: " << ipc_id << dendl;
+	dout(0) << __func__ << "Get IPC Message Queue ID: " << ipc_id << dendl;
 	existing.push_back(IPC_entity_t{target, ipc_id});
 	
 	IPCWorker * new_worker = new IPCWorker(this, target);

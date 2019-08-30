@@ -19,7 +19,8 @@
 
 #include "include/types.h"
 
-#define MDS_MONITOR_MIGRATOR
+//#define MDS_MONITOR_MIGRATOR
+#define MDS_MONITOR_MIGRATOR_LAT
 #define MDS_MIGRATOR_IPC
 
 #ifdef MDS_MIGRATOR_IPC
@@ -112,14 +113,14 @@ public:
 public:
  Migrator(MDSRank *m, MDCache *c);
 
-#ifdef MDS_MONITOR_MIGRATOR
+#if (defined MDS_MONITOR) || (defined MDS_MONITOR_MIGRATOR_LAT)
 private:
   std::map<CDir*, utime_t> export_record_start;
   std::map<CDir*, utime_t> export_record_finish;
   std::map<CDir*, utime_t> export_record_end_discover;
   std::map<CDir*, utime_t> export_record_end_prepare;
   std::map<CDir*, utime_t> export_record_end_export;
-  std::map<CDir*, utime_t> export_breakdown_endode;
+  std::map<CDir*, utime_t> export_breakdown_encode;
   std::map<CDir*, utime_t> export_breakdown_decode;
   std::map<CDir*, utime_t> rtt_discover_start;
   std::map<CDir*, utime_t> rtt_discover_finish;
