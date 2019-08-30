@@ -1097,7 +1097,7 @@ void MDBalancer::try_rebalance(balance_state_t& state)
       if ((*pot)->get_inode()->is_stray()) continue;
 
       #ifdef MDS_COLDFIRST_BALANCER
-      find_exports_coldfirst(*pot, amount, exports, have, already_exporting, true);
+      find_exports_coldfirst(true, *pot, amount, exports, have, already_exporting);
       #endif
       #ifndef MDS_COLDFIRST_BALANCER
       find_exports(*pot, amount, exports, have, already_exporting);
@@ -1138,12 +1138,12 @@ void MDBalancer::try_rebalance(balance_state_t& state)
 }
 
 #ifdef MDS_COLDFIRST_BALANCER
-void MDBalancer::find_exports_coldfirst(CDir *dir,
+void MDBalancer::find_exports_coldfirst(bool first_time,
+                              CDir *dir,
                               double amount,
                               list<CDir*>& exports,
                               double& have,
-                              set<CDir*>& already_exporting, 
-                              bool first_time)
+                              set<CDir*>& already_exporting)
 {
   double need = amount - have;
   if (need < amount * g_conf->mds_bal_min_start)
@@ -1274,7 +1274,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   dout(1) << " MDS_COLD " << __func__ << " export " << migcoldcount << " small and cold, stop " <<dendl;
 
   if (have < needmin && first_time){
-    find_exports_coldfirst(*it, amount, exports, have, already_exporting, false);
+    find_exports_coldfirst(false, *it, amount, exports, have, already_exporting);
   }
   return;
 
