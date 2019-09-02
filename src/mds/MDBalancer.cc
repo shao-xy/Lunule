@@ -1192,32 +1192,23 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       dout(1) << " subdir pop " << pop << " " << *subdir << dendl;
 
 
-      if (pop < minchunk*10 && pop > 0) {
+      if (pop < minchunk && pop > 0) {
       verycold.insert(pair<double,CDir*>(pop, subdir));
       coldcount++;
       dout(1) << " MDS_COLD " << __func__ << " find a clod " << *((*it).second) << " pop: " << pop << dendl;
       }
-
-      // lucky find?
-      /*if (pop > needmin && pop < needmax) {
-        #ifdef MDS_MONITOR
-  dout(7) << " MDS_MONITOR " << __func__ << "(2) Lucky Find DIR " << *subdir << " pop " << pop << 
-  " needmin~needmax " << needmin << " ~ " << needmax << " have " << have << " need " << need << dendl;
-  #endif 
-  exports.push_back(subdir);
-  already_exporting.insert(subdir);
-  have += pop;
-  return;
-      }*/
-
-      if (pop > need) {
-  if (subdir->is_rep())
-    bigger_rep.push_back(subdir);
-  else
-    bigger_unrep.push_back(subdir);
-      } else{
-    dout(1) << " MDS_COLD " << __func__ << " find a smaller " << *((*it).second) << " pop: " << pop << dendl;
-    smaller.insert(pair<double,CDir*>(pop, subdir));
+      else if (pop > needmin) {
+        if (subdir->is_rep()){
+            dout(1) << " MDS_COLD " << __func__ << " find a big_rep " << *((*it).second) << " pop: " << pop << dendl;
+            bigger_rep.push_back(subdir);
+          }
+        else{dout(1) << " MDS_COLD " << __func__ << " find a big_unrep " << *((*it).second) << " pop: " << pop << dendl;
+          bigger_unrep.push_back(subdir);
+        }
+      }
+      else{
+        dout(1) << " MDS_COLD " << __func__ << " find a smaller " << *((*it).second) << " pop: " << pop << dendl;
+        smaller.insert(pair<double,CDir*>(pop, subdir));
     }
 
     }
