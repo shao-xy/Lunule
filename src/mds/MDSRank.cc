@@ -700,6 +700,7 @@ void MDSRank::update_mlogger()
 void *MDSRank::Fim_Migrator_Dispatch_Thread::entry()
 {
   // fdout(0) << __func__ << " migrator_dispatch_queue.size " << mds->migrator_dispatch_queue.size() << dendl;
+  return NULL;
 }
 
 void MDSRank::Fim_Migrator_Dispatch_Thread::shutdown(){

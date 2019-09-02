@@ -525,7 +525,7 @@ private:
     mono_time starttime = mono_clock::zero();
 
 public:
-    std::queue<Message *> fim_migrate_dispatch_queue;
+    std::queue<Message *> fim_migrator_dispatch_queue;
 
     class Fim_Migrator_Dispatch_Thread : public Thread {
       MDSRank *mds;
