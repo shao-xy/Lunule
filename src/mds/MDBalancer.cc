@@ -1272,8 +1272,8 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     }
   }
 
-  for (list<CDir*>::iterator it = bigger_unrep.begin();
-       it != bigger_unrep.end();
+  for (list<CDir*>::iterator it = bigger_rep.begin();
+       it != bigger_rep.end();
        ++it) {
     dout(1) << " MDS_COLD " << __func__ << "   descending into big" << **it << dendl;
     find_exports_coldfirst(*it, amount, exports, have, already_exporting, descend_depth-1);
