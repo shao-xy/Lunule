@@ -1271,6 +1271,9 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       return;
     }
   }
+  }
+
+  
 
   for (list<CDir*>::iterator it = bigger_rep.begin();
        it != bigger_rep.end();
@@ -1281,8 +1284,6 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       dout(1) << " MDS_COLD " << __func__ << " good" <<dendl;
       return;
     }
-  }
-
   }
 
   dout(1) << " MDS_COLD " << __func__ << " export " << migcoldcount << " small and cold, stop " <<dendl;
