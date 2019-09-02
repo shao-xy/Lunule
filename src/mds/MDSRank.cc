@@ -95,7 +95,7 @@ MDSRank::MDSRank(
     suicide_hook(suicide_hook_),
     standby_replaying(false),
     starttime(mono_clock::now()),
-    thread_migrator_dispatch(this)
+    fim_migrator_dispatch_thread(this)
 {
   hb = g_ceph_context->get_heartbeat_map()->add_worker("MDSRank", pthread_self());
 
@@ -183,7 +183,7 @@ void MDSRankDispatcher::init()
   handle_osd_map();
 
   progress_thread.create("mds_rank_progr");
-  thread_migrator_dispatch.create("mds_migrator_fim_dispatch_asyncs");
+  fim_migrator_dispatch_thread.create("mds_migrator_fim_dispatch");
 
   purge_queue.init();
 
@@ -374,6 +374,8 @@ void MDSRankDispatcher::shutdown()
   op_tracker.on_shutdown();
 
   progress_thread.shutdown();
+
+  fim_migrator_dispatch_thread.shutdown();
 
   // release mds_lock for finisher/messenger threads (e.g.
   // MDSDaemon::ms_handle_reset called from Messenger).
@@ -695,9 +697,14 @@ void MDSRank::update_mlogger()
   }
 }
 
-void *MDSRank::MigratorDispatchThread::entry()
+void *MDSRank::Fim_Migrator_Dispatch_Thread::entry()
 {
-  dout(0) << __func__ << " migrator_dispatch_queue.size " << mds->migrator_dispatch_queue.size() << dendl;
+  // fdout(0) << __func__ << " migrator_dispatch_queue.size " << mds->migrator_dispatch_queue.size() << dendl;
+}
+
+void MDSRank::Fim_Migrator_Dispatch_Thread::shutdown(){
+  while(!mds->fim_migrator_dispatch_queue.empty())
+    mds->fim_migrator_dispatch_queue.pop();
 }
 
 /*
@@ -716,7 +723,7 @@ bool MDSRank::handle_deferrable_message(Message *m)
   case MDS_PORT_MIGRATOR:
     ALLOW_MESSAGES_FROM(CEPH_ENTITY_TYPE_MDS);
     if(g_conf->mds_migrator_fim_async)
-      migrator_dispatch_queue.push(m); // push migrator message into migrator_dispatch_queue, waiting for sthread_migrator_dispatch handling
+      fim_migrator_dispatch_queue.push(m); // push migrator message into migrator_dispatch_queue, waiting for sthread_migrator_dispatch handling
     // else
       mdcache->migrator->dispatch(m);
     break;

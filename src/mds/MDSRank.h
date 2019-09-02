@@ -319,15 +319,6 @@ class MDSRank {
     ~MDSRank();
 
   public:
-    std::queue<Message *> migrate_dispatch_queue;
-
-    class MigratorDispatchThread : public Thread {
-      MDSRank *mds;
-
-      public:
-        explicit MigratorDispatchThread(MDSRank *mds_) : mds(mds_) {}
-        void * entry() override;
-    } thread_migrator_dispatch;
 
     // Daemon lifetime functions: these guys break the abstraction
     // and call up into the parent MDSDaemon instance.  It's kind
@@ -532,6 +523,19 @@ class MDSRank {
 
 private:
     mono_time starttime = mono_clock::zero();
+
+public:
+    std::queue<Message *> fim_migrate_dispatch_queue;
+
+    class Fim_Migrator_Dispatch_Thread : public Thread {
+      MDSRank *mds;
+
+      public:
+        explicit Fim_Migrator_Dispatch_Thread(MDSRank *mds_) : mds(mds_) {}
+        void * entry() override;
+        void shutdown();
+    }fim_migrator_dispatch_thread;
+
 };
 
 /* This expects to be given a reference which it is responsible for.
