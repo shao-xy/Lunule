@@ -185,8 +185,6 @@ void MDSRankDispatcher::init()
   progress_thread.create("mds_rank_progr");
   thread_migrator_dispatch.create("mds_migrator_fim_dispatch_asyncs");
 
-  assert(migrator_dispatch_queue.empty());
-
   purge_queue.init();
 
   finisher->start();
@@ -699,7 +697,7 @@ void MDSRank::update_mlogger()
 
 void *MDSRank::MigratorDispatchThread::entry()
 {
-  mds->dout(0) << __func__ << " migrator_dispatch_queue.size " << mds->migrator_dispatch_queue.size() << dendl;
+  dout(0) << __func__ << " migrator_dispatch_queue.size " << mds->migrator_dispatch_queue.size() << dendl;
 }
 
 /*
