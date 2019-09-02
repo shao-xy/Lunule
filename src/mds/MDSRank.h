@@ -316,8 +316,15 @@ class MDSRank {
     ~MDSRank();
 
   public:
+    std::queue<Message *> migrate_dispatch_queue;
 
-    void dispatch_background(Message *m);
+    class MigratorDispatchThread : public Thread {
+      MDSRank *mds;
+
+      public:
+        explicit ProgressThread(MDSRank *mds_) : mds(mds_) {}
+        void * entry() override;
+    } thread_migrator_dispatch;
 
     // Daemon lifetime functions: these guys break the abstraction
     // and call up into the parent MDSDaemon instance.  It's kind
