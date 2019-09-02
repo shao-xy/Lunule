@@ -692,6 +692,14 @@ void MDSRank::update_mlogger()
 }
 
 /*
+ * dispatch migrator message background
+ */
+void MDSRank::dispatch_background(Message *m){
+  dout(0) << __func__ << " dispatch migrator message background" << dendl;
+  mdcache->migrator->dispatch(m);
+}
+
+/*
  * lower priority messages we defer if we seem laggy
  */
 bool MDSRank::handle_deferrable_message(Message *m)
@@ -706,7 +714,12 @@ bool MDSRank::handle_deferrable_message(Message *m)
 
   case MDS_PORT_MIGRATOR:
     ALLOW_MESSAGES_FROM(CEPH_ENTITY_TYPE_MDS);
-    mdcache->migrator->dispatch(m);
+    if(g_conf->mds_migrator_fim_async){
+      auto thread_fim = Thread(dispatch_background,m);
+      thread_fim.join();
+    }
+    else
+      mdcache->migrator->dispatch(m);
     break;
 
   default:

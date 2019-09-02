@@ -398,7 +398,7 @@ bool Locker::acquire_locks(MDRequestRef& mdr,
 	mdr->aborted = true;
 	return false;
       }
-      dout(10) << " can't auth_pin (freezing?), waiting to authpin " << *object << dendl;
+      dout(0) << " can't auth_pin (freezing?), waiting to authpin " << *object << dendl;
       object->add_waiter(MDSCacheObject::WAIT_UNFREEZE, new C_MDS_RetryRequest(mdcache, mdr));
 
       if (!mdr->remote_auth_pins.empty())

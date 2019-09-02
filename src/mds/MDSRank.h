@@ -317,6 +317,8 @@ class MDSRank {
 
   public:
 
+    void dispatch_background(Message *m);
+
     // Daemon lifetime functions: these guys break the abstraction
     // and call up into the parent MDSDaemon instance.  It's kind
     // of unavoidable: if we want any depth into our calls 

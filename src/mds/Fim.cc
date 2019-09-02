@@ -332,7 +332,7 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 		return;
 	}
 
-	// #ifndef FIM_UNLOCKING
+	#ifndef FIM_UNLOCKING
 	// locking
 	set<SimpleLock*> rdlocks;
 	set<SimpleLock*> xlocks;
@@ -349,7 +349,7 @@ void Fim::fim_dispatch_export_dir(MDRequestRef& mdr, int count){
 			mig->export_try_cancel(dir);
 		return;
 	}
-	// #endif
+	#endif
 
 	// discovering step
 	assert(g_conf->mds_kill_export_at != 1);
@@ -503,7 +503,7 @@ void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
 
 	CInode *diri = dir->get_inode();
 
-	// #ifndef FIM_UNLOCKING
+	#ifndef FIM_UNLOCKING
 	// ok, try to grab all my locks.
 	set<SimpleLock*> rdlocks;
 	mig->get_export_lock_set(dir, rdlocks);
@@ -527,7 +527,7 @@ void Fim::fim_export_frozen(CDir *dir, uint64_t tid){
 	mig->mds->locker->rdlock_take_set(rdlocks, it->second.mut);
 	mig->mds->locker->wrlock_force(&diri->filelock, it->second.mut);
 	mig->mds->locker->wrlock_force(&diri->nestlock, it->second.mut);
-	// #endif
+	#endif
 
 	// can ignore and bypass
 	mig->cache->show_subtrees();
