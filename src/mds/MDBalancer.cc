@@ -1097,7 +1097,7 @@ void MDBalancer::try_rebalance(balance_state_t& state)
       if ((*pot)->get_inode()->is_stray()) continue;
 
       #ifdef MDS_COLDFIRST_BALANCER
-      find_exports_coldfirst(*pot, amount, exports, have, already_exporting, true);
+      find_exports_coldfirst(*pot, amount, exports, have, already_exporting, 3);
       #endif
       #ifndef MDS_COLDFIRST_BALANCER
       find_exports(*pot, amount, exports, have, already_exporting);
@@ -1143,7 +1143,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
                               list<CDir*>& exports,
                               double& have,
                               set<CDir*>& already_exporting, 
-                              bool first_time)
+                              int descend_depth)
 {
   double need = amount - have;
   if (need < amount * g_conf->mds_bal_min_start)
@@ -1267,14 +1267,14 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     exports.push_back((*it).second);
     already_exporting.insert((*it).second);
     have += (*it).first;
-    if (have > needmin || first_time != true)
+    if (have > needmin || descend_depth <= 0)
       return;
 
     for (multimap<double,CDir*>::reverse_iterator it = smaller.rbegin();
        it != smaller.rend();
        ++it) {
     dout(1) << " MDS_COLD " << __func__ << " descending into a smaller big " << *((*it).second) << dendl;
-    find_exports_coldfirst((*it).second, amount, exports, have, already_exporting, false);
+    find_exports_coldfirst((*it).second, amount, exports, have, already_exporting, descend_depth-1);
     if (have > needmin){
       dout(1) << " MDS_COLD " << __func__ << " good" <<dendl;
       return;

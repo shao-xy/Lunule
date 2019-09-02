@@ -98,7 +98,7 @@ private:
                     list<CDir*>& exports,
                     double& have,
                     set<CDir*>& already_exporting,
-                    bool first_time);
+                    int descend_depth);
   void find_exports(CDir *dir,
                     double amount,
                     list<CDir*>& exports,
