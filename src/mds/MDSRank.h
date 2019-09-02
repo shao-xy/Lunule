@@ -38,6 +38,9 @@
 // benefit of those including this header and using MDSRank::logger
 #include "common/perf_counters.h"
 
+#include <queue>
+using namespace std;
+
 enum {
   l_mds_first = 2000,
   l_mds_request,
@@ -322,7 +325,7 @@ class MDSRank {
       MDSRank *mds;
 
       public:
-        explicit ProgressThread(MDSRank *mds_) : mds(mds_) {}
+        explicit MigratorDispatchThread(MDSRank *mds_) : mds(mds_) {}
         void * entry() override;
     } thread_migrator_dispatch;
 
