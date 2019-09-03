@@ -183,7 +183,7 @@ void MDSRankDispatcher::init()
   handle_osd_map();
 
   progress_thread.create("mds_rank_progr");
-  fim_migrator_dispatch_thread.create("mds_migrator_fim_dispatch");
+  fim_migrator_dispatch_thread.create("fim_dispatch");
 
   purge_queue.init();
 
