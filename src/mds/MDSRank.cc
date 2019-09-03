@@ -741,7 +741,7 @@ bool MDSRank::handle_deferrable_message(Message *m)
     ALLOW_MESSAGES_FROM(CEPH_ENTITY_TYPE_MDS);
     if(g_conf->mds_migrator_fim_dispatch)
       fim_migrator_dispatch_queue.push(m); // push migrator message into migrator_dispatch_queue, waiting for sthread_migrator_dispatch handling
-    // else
+    else
       mdcache->migrator->dispatch(m);
     break;
 
