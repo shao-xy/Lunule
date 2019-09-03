@@ -700,11 +700,19 @@ void MDSRank::update_mlogger()
 }
 
 #undef dout_prefix
-#define dout_prefix *_dout << "mds." << mds->whoami << '.' << mds->incarnation << ' Fim_Migrator_Dispatch_Thread '
+#define dout_prefix *_dout << "mds." << mds->whoami << '.' << mds->incarnation << " Fim_Migrator_Dispatch_Thread "
 
 void *MDSRank::Fim_Migrator_Dispatch_Thread::entry()
 {
-  dout(0) << __func__ << " migrator_dispatch_queue.size " << mds->fim_migrator_dispatch_queue.size() << dendl;
+  // dout(0) << __func__ << " migrator_dispatch_queue.size " << mds->fim_migrator_dispatch_queue.size() << dendl;
+  while(1){
+    if(!mds->fim_migrator_dispatch_queue.empty()){
+      Message *m = mds->fim_migrator_dispatch_queue.front();
+      dout(0) << __func__ << " fim_dispatch " << *m << dendl;
+      mds->mdcache->migrator->dispatch(m);
+      mds->fim_migrator_dispatch_queue.pop();
+    }
+  }
   return NULL;
 }
 
