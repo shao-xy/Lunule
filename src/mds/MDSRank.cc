@@ -376,6 +376,8 @@ void MDSRankDispatcher::shutdown()
   progress_thread.shutdown();
 
   fim_migrator_dispatch_thread.shutdown();
+  dout(0) << __func__ << " kill Fim_Migrator_Dispatch_Thread" << dendl;
+  fim_migrator_dispatch_thread.kill(0);
 
   // release mds_lock for finisher/messenger threads (e.g.
   // MDSDaemon::ms_handle_reset called from Messenger).
