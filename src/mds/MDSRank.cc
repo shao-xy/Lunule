@@ -122,7 +122,6 @@ MDSRank::MDSRank(
                                          cct->_conf->mds_op_log_threshold);
   op_tracker.set_history_size_and_duration(cct->_conf->mds_op_history_size,
                                            cct->_conf->mds_op_history_duration);
-  // if(g_conf->mds_migrator_fim_async)
 
 }
 
@@ -183,7 +182,11 @@ void MDSRankDispatcher::init()
   handle_osd_map();
 
   progress_thread.create("mds_rank_progr");
-  fim_migrator_dispatch_thread.create("fim_dispatch");
+
+  if(g_conf->mds_migrator_fim_dispatch){
+    fim_migrator_dispatch_thread.create("fim_dispatch");
+    fim_migrator_dispatch_thread.detach();
+  }
 
   purge_queue.init();
 
@@ -375,9 +378,11 @@ void MDSRankDispatcher::shutdown()
 
   progress_thread.shutdown();
 
-  fim_migrator_dispatch_thread.shutdown();
-  dout(0) << __func__ << " kill Fim_Migrator_Dispatch_Thread" << dendl;
-  fim_migrator_dispatch_thread.kill(0);
+  if(g_conf->mds_migrator_fim_dispatch){
+    fim_migrator_dispatch_thread.shutdown();
+    dout(0) << __func__ << " kill Fim_Migrator_Dispatch_Thread" << dendl;
+    fim_migrator_dispatch_thread.kill(0);
+  }
 
   // release mds_lock for finisher/messenger threads (e.g.
   // MDSDaemon::ms_handle_reset called from Messenger).
