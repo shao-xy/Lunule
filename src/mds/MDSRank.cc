@@ -713,7 +713,7 @@ void *MDSRank::Fim_Migrator_Dispatch_Thread::entry()
   while(1){
     if(!mds->fim_migrator_dispatch_queue.empty()){
       Message *m = mds->fim_migrator_dispatch_queue.front();
-      dout(0) << __func__ << " fim_dispatch " << *m << dendl;
+      dout(0) << __func__ << " fim_migrator_dispatch_thread handle message " << *m << dendl;
       mds->mdcache->migrator->dispatch(m);
       mds->fim_migrator_dispatch_queue.pop();
     }
@@ -722,8 +722,10 @@ void *MDSRank::Fim_Migrator_Dispatch_Thread::entry()
 }
 
 void MDSRank::Fim_Migrator_Dispatch_Thread::shutdown(){
-  while(!mds->fim_migrator_dispatch_queue.empty())
+  while(!mds->fim_migrator_dispatch_queue.empty()){
+    dout(0) << __func__ << " fim_migrator_dispatch_thread clean message " << *m << dendl;
     mds->fim_migrator_dispatch_queue.pop();
+  }
 }
 
 #undef dout_prefix
@@ -744,9 +746,11 @@ bool MDSRank::handle_deferrable_message(Message *m)
 
   case MDS_PORT_MIGRATOR:
     ALLOW_MESSAGES_FROM(CEPH_ENTITY_TYPE_MDS);
-    if(g_conf->mds_migrator_fim_dispatch)
+    if(g_conf->mds_migrator_fim_dispatch){
+      dout(0) << __func__ << " push Message " << *m << " to fim_migrator_dispatch_queue" << dendl;
       fim_migrator_dispatch_queue.push(m); // push migrator message into migrator_dispatch_queue, waiting for sthread_migrator_dispatch handling
-    else
+    }
+    // else
       mdcache->migrator->dispatch(m);
     break;
 
