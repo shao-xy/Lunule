@@ -716,11 +716,11 @@ void Migrator::maybe_do_queued_export()
   if (running)
     return;
   running = true;
-  #ifdef MDS_MONITOR_MIGRATOR
-  dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << dendl;
-  for(list<pair<dirfrag_t,mds_rank_t> >::iterator it = export_queue.begin(); it != export_queue.end();++it)
-    dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (1) export_queue DIR " << *(mds->mdcache->get_dirfrag(it->first)) << " DEST " << it->second << dendl;
-  #endif
+  // #ifdef MDS_MONITOR_MIGRATOR
+  // dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << dendl;
+  // for(list<pair<dirfrag_t,mds_rank_t> >::iterator it = export_queue.begin(); it != export_queue.end();++it)
+  //   dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (1) export_queue DIR " << *(mds->mdcache->get_dirfrag(it->first)) << " DEST " << it->second << dendl;
+  // #endif
   while (!export_queue.empty() &&
 	 export_state.size() <= 4) {
     dirfrag_t df = export_queue.front().first;
