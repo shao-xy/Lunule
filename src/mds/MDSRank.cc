@@ -723,7 +723,7 @@ void *MDSRank::Fim_Migrator_Dispatch_Thread::entry()
 
 void MDSRank::Fim_Migrator_Dispatch_Thread::shutdown(){
   while(!mds->fim_migrator_dispatch_queue.empty()){
-    dout(0) << __func__ << " fim_migrator_dispatch_thread clean message " << *m << dendl;
+    dout(0) << __func__ << " fim_migrator_dispatch_thread clean message " << mds->fim_migrator_dispatch_queue.front() << dendl;
     mds->fim_migrator_dispatch_queue.pop();
   }
 }
