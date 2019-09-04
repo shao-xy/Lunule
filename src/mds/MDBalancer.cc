@@ -1192,7 +1192,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       dout(1) << " subdir pop " << pop << " " << *subdir << dendl;
 
 
-      if (pop < minchunk && pop > 0) {
+      if (pop < minchunk ) {
       verycold.insert(pair<double,CDir*>(pop, subdir));
       coldcount++;
       dout(1) << " MDS_COLD " << __func__ << " find a clod " << *((*it).second) << " pop: " << pop << dendl;
