@@ -738,6 +738,7 @@ bool MDSRank::handle_deferrable_message(Message *m)
 {
   int port = m->get_type() & 0xff00;
 
+  dout(0) << __func__ << " dispatch message " << *m << dendl;
   switch (port) {
   case MDS_PORT_CACHE:
     ALLOW_MESSAGES_FROM(CEPH_ENTITY_TYPE_MDS);
@@ -750,8 +751,11 @@ bool MDSRank::handle_deferrable_message(Message *m)
       dout(0) << __func__ << " push Message " << *m << " to fim_migrator_dispatch_queue" << dendl;
       fim_migrator_dispatch_queue.push(m); // push migrator message into migrator_dispatch_queue, waiting for sthread_migrator_dispatch handling
     }
+    {
     // else
+      dout(0) << __func__ << " handle migrator message " << *m << dendl;
       mdcache->migrator->dispatch(m);
+    }
     break;
 
   default:
