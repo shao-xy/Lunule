@@ -712,13 +712,14 @@ void *MDSRank::Fim_Migrator_Dispatch_Thread::entry()
 {
   dout(0) << __func__ << " migrator_dispatch_queue.size " << mds->fim_migrator_dispatch_queue.size() << dendl;
   while(1){
-    if(!(mds->fim_migrator_dispatch_queue.empty())){
+    if(mds->fim_migrator_dispatch_queue.size() > 0){
       Message *m = mds->fim_migrator_dispatch_queue.front();
       dout(0) << __func__ << " fim_migrator_dispatch_thread queue size " << mds->fim_migrator_dispatch_queue.size() << " handle message " << *m << dendl;
       mds->mdcache->migrator->dispatch(m);
       mds->fim_migrator_dispatch_queue.pop();
     }
-    // dout(0) << __func__ << " migrator_dispatch_queue.size " << mds->fim_migrator_dispatch_queue.size() << dendl;
+    sleep(1);
+    dout(0) << __func__ << " fim_migrator_dispatch_queue.size " << mds->fim_migrator_dispatch_queue.size() << dendl;
   }
   return NULL;
 }
@@ -759,6 +760,7 @@ bool MDSRank::handle_deferrable_message(Message *m)
       dout(0) << __func__ << " handle migrator message " << *m << dendl;
       mdcache->migrator->dispatch(m);
     }
+    dout(0) << __func__ << " dispatch migrator message " << *m << " successfully." << dendl;
     break;
 
   default:
