@@ -1327,11 +1327,17 @@ void CDir::finish_waiting(uint64_t mask, int result)
   dout(11) << "finish_waiting mask " << hex << mask << dec << " result " << result << " on " << *this << dendl;
 
   list<MDSInternalContextBase*> finished;
+  dout(10) << __func__ << "debug 0" << dendl;
   take_waiting(mask, finished);
-  if (result < 0)
+  dout(10) << __func__ << "debug 1" << dendl;
+  if (result < 0){
+    dout(10) << __func__ << "debug 2" << dendl;
     finish_contexts(g_ceph_context, finished, result);
-  else
+  }
+  else{
+    dout(10) << __func__ << "debug 3" << dendl;
     cache->mds->queue_waiters(finished);
+  }
 }
 
 
@@ -2690,12 +2696,14 @@ void CDir::auth_unpin(void *by)
   
   int newcum = get_cum_auth_pins();
 
+  dout(10) << __func__ << "debug 0" << dendl;
   maybe_finish_freeze();  // pending freeze?
-  
+  dout(10) << __func__ << "debug 1" << dendl;
   // nest?
   if (!is_subtree_root() &&
       newcum == 0)
     inode->adjust_nested_auth_pins(-1, by);
+  dout(10) << __func__ << "debug 2" << dendl;
 }
 
 void CDir::adjust_nested_auth_pins(int inc, int dirinc, void *by)
@@ -2800,33 +2808,42 @@ void CDir::_freeze_tree()
 
   // twiddle state
   if (state_test(STATE_FREEZINGTREE)) {
+    dout(10) << __func__ << "debug 0" << dendl;
     state_clear(STATE_FREEZINGTREE);   // actually, this may get set again by next context?
     --num_freezing_trees;
   }
 
   if (is_auth()) {
+    dout(10) << __func__ << "debug 1" << dendl;
     mds_authority_t auth;
     bool was_subtree = is_subtree_root();
     if (was_subtree) {
+      dout(10) << __func__ << "debug 2" << dendl;
       auth = get_dir_auth();
     } else {
+      dout(10) << __func__ << "debug 3" << dendl;
       // temporarily prevent parent subtree from becoming frozen.
       inode->auth_pin(this);
       // create new subtree
       auth = authority();
     }
 
+    dout(10) << __func__ << "debug 4" << dendl;
+
     assert(auth.first >= 0);
     assert(auth.second == CDIR_AUTH_UNKNOWN);
     auth.second = auth.first;
     inode->mdcache->adjust_subtree_auth(this, auth);
+    dout(10) << __func__ << "debug 5" << dendl;
     if (!was_subtree)
       inode->auth_unpin(this);
+    dout(10) << __func__ << "debug 6" << dendl;
   }
 
   state_set(STATE_FROZENTREE);
   ++num_frozen_trees;
   get(PIN_FROZEN);
+  dout(10) << __func__ << "debug 7" << dendl;
 }
 
 void CDir::unfreeze_tree()
@@ -2923,29 +2940,41 @@ void CDir::maybe_finish_freeze()
   if (auth_pins != 1 || dir_auth_pins != 0)
     return;
 
+  dout(10) << __func__ << "debug 0" << dendl;
+
   // we can freeze the _dir_ even with nested pins...
   if (state_test(STATE_FREEZINGDIR)) {
+    dout(10) << __func__ << "debug 1" << dendl;
     _freeze_dir();
+    dout(10) << __func__ << "debug 2" << dendl;
     auth_unpin(this);
+    dout(10) << __func__ << "debug 3" << dendl;
     finish_waiting(WAIT_FROZEN);
+    dout(10) << __func__ << "debug 4" << dendl;
   }
 
   if (nested_auth_pins != 0)
     return;
-
+  dout(10) << __func__ << "debug 5" << dendl;
   if (state_test(STATE_FREEZINGTREE)) {
+    dout(10) << __func__ << "debug 6" << dendl;
     if (!is_subtree_root() && inode->is_frozen()) {
       dout(10) << "maybe_finish_freeze !subtree root and frozen inode, waiting for unfreeze on " << inode << dendl;
       // retake an auth_pin...
       auth_pin(inode);
+      dout(10) << __func__ << "debug add_waiter" << dendl;
       // and release it when the parent inode unfreezes
       inode->add_waiter(WAIT_UNFREEZE, new C_Dir_AuthUnpin(this));
+      dout(10) << __func__ << "debug add_waiter done" << dendl;
       return;
     }
-
+    dout(10) << __func__ << "debug 7" << dendl;
     _freeze_tree();
+    dout(10) << __func__ << "debug 8" << dendl;
     auth_unpin(this);
+    dout(10) << __func__ << "debug 9" << dendl;
     finish_waiting(WAIT_FROZEN);
+    dout(10) << __func__ << "debug 10" << dendl;
   }
 }
 
