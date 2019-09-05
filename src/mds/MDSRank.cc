@@ -184,6 +184,7 @@ void MDSRankDispatcher::init()
   progress_thread.create("mds_rank_progr");
 
   if(g_conf->mds_migrator_fim_dispatch){
+    dout(0) << __func__ << " create fim_dispatch thread" << dendl;
     fim_migrator_dispatch_thread.create("fim_dispatch");
     fim_migrator_dispatch_thread.detach();
   }
@@ -709,21 +710,24 @@ void MDSRank::update_mlogger()
 
 void *MDSRank::Fim_Migrator_Dispatch_Thread::entry()
 {
-  // dout(0) << __func__ << " migrator_dispatch_queue.size " << mds->fim_migrator_dispatch_queue.size() << dendl;
+  dout(0) << __func__ << " migrator_dispatch_queue.size " << mds->fim_migrator_dispatch_queue.size() << dendl;
   while(1){
-    if(!mds->fim_migrator_dispatch_queue.empty()){
+    if(!(mds->fim_migrator_dispatch_queue.empty())){
       Message *m = mds->fim_migrator_dispatch_queue.front();
-      dout(0) << __func__ << " fim_migrator_dispatch_thread handle message " << *m << dendl;
+      dout(0) << __func__ << " fim_migrator_dispatch_thread queue size " << mds->fim_migrator_dispatch_queue.size() << " handle message " << *m << dendl;
       mds->mdcache->migrator->dispatch(m);
       mds->fim_migrator_dispatch_queue.pop();
     }
+    // dout(0) << __func__ << " migrator_dispatch_queue.size " << mds->fim_migrator_dispatch_queue.size() << dendl;
   }
   return NULL;
 }
 
 void MDSRank::Fim_Migrator_Dispatch_Thread::shutdown(){
   while(!mds->fim_migrator_dispatch_queue.empty()){
-    dout(0) << __func__ << " fim_migrator_dispatch_thread clean message " << mds->fim_migrator_dispatch_queue.front() << dendl;
+    Message *m = mds->fim_migrator_dispatch_queue.front();
+    dout(0) << __func__ << " fim_migrator_dispatch_thread clean message " << *m << dendl;
+    mds->mdcache->migrator->dispatch(m);
     mds->fim_migrator_dispatch_queue.pop();
   }
 }
@@ -751,8 +755,7 @@ bool MDSRank::handle_deferrable_message(Message *m)
       dout(0) << __func__ << " push Message " << *m << " to fim_migrator_dispatch_queue" << dendl;
       fim_migrator_dispatch_queue.push(m); // push migrator message into migrator_dispatch_queue, waiting for sthread_migrator_dispatch handling
     }
-    {
-    // else
+    else{
       dout(0) << __func__ << " handle migrator message " << *m << dendl;
       mdcache->migrator->dispatch(m);
     }
