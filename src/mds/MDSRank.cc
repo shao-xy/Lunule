@@ -721,7 +721,7 @@ void *MDSRank::Fim_Migrator_Dispatch_Thread::entry()
       else if(m->get_type() == MSG_MDS_HEARTBEAT)
         mds->balancer->proc_message(m);
       else
-        dout(0) << __func__ << " fim_migrator_dispatch_thread error type message " << *m << dnedl;
+        dout(0) << __func__ << " fim_migrator_dispatch_thread error type message " << *m << dendl;
       mds->fim_migrator_dispatch_queue.pop();
     }
     // sleep(1);
