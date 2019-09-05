@@ -715,11 +715,17 @@ void *MDSRank::Fim_Migrator_Dispatch_Thread::entry()
     if(mds->fim_migrator_dispatch_queue.size() > 0){
       Message *m = mds->fim_migrator_dispatch_queue.front();
       dout(0) << __func__ << " fim_migrator_dispatch_thread queue size " << mds->fim_migrator_dispatch_queue.size() << " handle message " << *m << dendl;
-      mds->mdcache->migrator->dispatch(m);
+      int port = m->get_type() & 0xff00;
+      if(port == MDS_PORT_MIGRATOR)
+        mds->mdcache->migrator->dispatch(m);
+      else if(m->get_type() == MSG_MDS_HEARTBEAT)
+        mds->balancer->proc_message(m);
+      else
+        dout(0) << __func__ << " fim_migrator_dispatch_thread error type message " << *m << dnedl;
       mds->fim_migrator_dispatch_queue.pop();
     }
-    sleep(1);
-    dout(0) << __func__ << " fim_migrator_dispatch_queue.size " << mds->fim_migrator_dispatch_queue.size() << dendl;
+    // sleep(1);
+    // dout(0) << __func__ << " fim_migrator_dispatch_queue.size " << mds->fim_migrator_dispatch_queue.size() << dendl;
   }
   return NULL;
 }
@@ -780,7 +786,15 @@ bool MDSRank::handle_deferrable_message(Message *m)
 
     case MSG_MDS_HEARTBEAT:
       ALLOW_MESSAGES_FROM(CEPH_ENTITY_TYPE_MDS);
-      balancer->proc_message(m);
+      if(g_conf->mds_migrator_fim_dispatch){
+        dout(0) << __func__ << " push Message " << *m << " to fim_migrator_dispatch_queue" << dendl;
+        fim_migrator_dispatch_queue.push(m); // push migrator message into migrator_dispatch_queue, waiting for sthread_migrator_dispatch handling
+      }
+      else{
+        dout(0) << __func__ << " handle HB message " << *m << dendl;
+        balancer->proc_message(m);
+      }
+      dout(0) << __func__ << " dispatch HB message " << *m << " successfully." << dendl;
       break;
 
     case MSG_MDS_TABLE_REQUEST:
