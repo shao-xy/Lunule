@@ -61,3 +61,7 @@ GTAGS
 
 # editor backup files etc.
 \#*\#
+
+# tags
+.tags
+.tags_sorted_by_file
