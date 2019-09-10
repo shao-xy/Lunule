@@ -1097,7 +1097,7 @@ void MDBalancer::try_rebalance(balance_state_t& state)
       if ((*pot)->get_inode()->is_stray()) continue;
 
       #ifdef MDS_COLDFIRST_BALANCER
-      find_exports_coldfirst(*pot, amount, exports, have, already_exporting, 3);
+      find_exports_dominator(*pot, amount, exports, have, already_exporting, 3);
       #endif
       #ifndef MDS_COLDFIRST_BALANCER
       find_exports(*pot, amount, exports, have, already_exporting);
@@ -1138,6 +1138,76 @@ void MDBalancer::try_rebalance(balance_state_t& state)
 }
 
 #ifdef MDS_COLDFIRST_BALANCER
+void MDBalancer::find_exports_dominator(CDir *dir,
+                              double amount,
+                              list<CDir*>& exports,
+                              double& have,
+                              set<CDir*>& already_exporting)
+{
+  double need = amount - have;
+  if (need < amount * g_conf->mds_bal_min_start)
+    return;   // good enough!
+  double needmax = need * g_conf->mds_bal_need_max;
+  double needmin = need * g_conf->mds_bal_need_min;
+  double midchunk = need * g_conf->mds_bal_midchunk;
+  double minchunk = need * g_conf->mds_bal_minchunk;
+
+  list<CDir*> bigger_rep, bigger_unrep;
+  int coldcount = 0;
+  int migcoldcount = 0;
+
+  double dir_pop = dir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
+  dout(1) << " MDS_COLD " << __func__ << " find_exports in " << *dir << " pop " << dir_pop << " amount " << amount << " have " << have << " need " << need << " in (" << needmin << " - " << needmax << ")" << dendl;
+  
+  double subdir_sum = 0;
+  for (auto it = dir->begin(); it != dir->end(); ++it) {
+    CInode *in = it->second->get_linkage()->get_inode();
+    if (!in) continue;
+    if (!in->is_dir()) continue;
+
+    list<CDir*> dfls;
+    in->get_dirfrags(dfls);
+    for (list<CDir*>::iterator p = dfls.begin();
+   p != dfls.end();
+   ++p) {
+      CDir *subdir = *p;
+
+      if (!subdir->is_auth()) continue;
+      if (already_exporting.count(subdir)) continue;
+
+      if (subdir->is_frozen()) continue;  // can't export this right now!
+
+      // how popular?
+      double pop = subdir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
+      subdir_sum += pop;
+      dout(1) << " subdir pop " << pop << " " << *subdir << dendl;
+
+      if (pop > needmin) {
+        if (subdir->is_rep()){
+            dout(1) << " MDS_COLD " << __func__ << " find a big_rep " << *((*it).second) << " pop: " << pop << dendl;
+            bigger_rep.push_back(subdir);
+          }
+        else{dout(1) << " MDS_COLD " << __func__ << " find a big_unrep " << *((*it).second) << " pop: " << pop << dendl;
+          bigger_unrep.push_back(subdir);
+        }
+        break;
+      }
+    }
+  }
+
+  for (list<CDir*>::iterator it = bigger_rep.begin();
+       it != bigger_rep.end();
+       ++it) {
+    dout(1) << " MDS_COLD " << __func__ << "   descending into big" << **it << dendl;
+    find_exports_coldfirst(*it, amount, exports, have, already_exporting, descend_depth-1);
+    if (have > needmin){
+      dout(1) << " MDS_COLD " << __func__ << " good" <<dendl;
+      return;
+    }
+  }
+}
+
+
 void MDBalancer::find_exports_coldfirst(CDir *dir,
                               double amount,
                               list<CDir*>& exports,
@@ -1273,8 +1343,6 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   }
   }
 
-  
-
   for (list<CDir*>::iterator it = bigger_rep.begin();
        it != bigger_rep.end();
        ++it) {
@@ -1287,60 +1355,6 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   }
 
   dout(1) << " MDS_COLD " << __func__ << " export " << migcoldcount << " small and cold, stop " <<dendl;
-  /*for (it = smaller.begin();
-       it != smaller.end() && migcoldcount<=1000;
-       ++it) {
-    if (have < needmin && first_time){
-    find_exports_coldfirst((*it).second, amount, exports, have, already_exporting, false);
-    }else{
-    return;
-    }
-    }
-  return;
-  */
-
-  // apprently not enough; drill deeper into the hierarchy (if non-replicated)
-  /*
-  for (list<CDir*>::iterator it = bigger_unrep.begin();
-       it != bigger_unrep.end();
-       ++it) {
-    #ifdef MDS_MONITOR
-  dout(7) << " MDS_MONITOR " << __func__ << "(4) descending into bigger DIR " << **it << dendl;
-  #endif
-    dout(15) << "   descending into " << **it << dendl;
-    find_exports(*it, amount, exports, have, already_exporting);
-    if (have > needmin)
-      return;
-  }
-
-  // ok fine, use smaller bits
-  for (;
-       it != smaller.rend();
-       ++it) {
-    dout(7) << "   taking (much) smaller " << it->first << " " << *(*it).second << dendl;
-    #ifdef MDS_MONITOR
-  dout(7) << " MDS_MONITOR " << __func__ << "(5) taking (much) smaller DIR " << *((*it).second) << " pop " << (*it).first << dendl;
-  #endif
-    exports.push_back((*it).second);
-    already_exporting.insert((*it).second);
-    have += (*it).first;
-    if (have > needmin)
-      return;
-  }
-
-  // ok fine, drill into replicated dirs
-  for (list<CDir*>::iterator it = bigger_rep.begin();
-       it != bigger_rep.end();
-       ++it) {
-    #ifdef MDS_MONITOR
-  dout(7) << " MDS_MONITOR " << __func__ << "(6) descending into replicated DIR " << **it << dendl;
-  #endif
-    dout(7) << "   descending into replicated " << **it << dendl;
-    find_exports(*it, amount, exports, have, already_exporting);
-    if (have > needmin)
-      return;
-  }
-  */
 
 }
 #endif
