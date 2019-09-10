@@ -1199,7 +1199,7 @@ void MDBalancer::find_exports_dominator(CDir *dir,
        it != bigger_rep.end();
        ++it) {
     dout(1) << " MDS_COLD " << __func__ << "   descending into big" << **it << dendl;
-    find_exports_coldfirst(*it, amount, exports, have, already_exporting, descend_depth-1);
+    find_exports_coldfirst(*it, amount, exports, have, already_exporting, 5);
     if (have > needmin){
       dout(1) << " MDS_COLD " << __func__ << " good" <<dendl;
       return;
