@@ -1182,7 +1182,8 @@ void MDBalancer::find_exports_dominator(CDir *dir,
       subdir_sum += pop;
       dout(1) << " subdir pop " << pop << " " << *subdir << dendl;
 
-      if (pop > needmin) {
+      //if (pop > needmin) {
+      if (pop > 0.5*dir_pop) {
         if (subdir->is_rep()){
             dout(1) << " MDS_COLD " << __func__ << " find a big_rep " << *((*it).second) << " pop: " << pop << dendl;
             bigger_rep.push_back(subdir);
