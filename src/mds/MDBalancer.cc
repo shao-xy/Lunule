@@ -1296,7 +1296,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     already_exporting.insert((*it).second);
     have += (*it).first;
     migcoldcount++;
-    if(migcoldcount>1000){
+    if(migcoldcount>50){
       dout(1) << " MDS_COLD " << __func__ << " find 1000 cold fragments, stop " << dendl;
       return;}
     }
