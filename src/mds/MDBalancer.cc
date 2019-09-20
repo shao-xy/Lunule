@@ -1183,7 +1183,7 @@ void MDBalancer::find_exports_dominator(CDir *dir,
       dout(1) << " subdir pop " << pop << " " << *subdir << dendl;
 
       //if (pop > needmin) {
-      if (pop > 0.5*dir_pop) {
+      if (pop > 0.6*dir_pop) {
         if (subdir->is_rep()){
             dout(1) << " MDS_COLD " << __func__ << " find a big_rep " << *((*it).second) << " pop: " << pop << dendl;
             bigger_rep.push_back(subdir);
@@ -1297,7 +1297,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     have += (*it).first;
     migcoldcount++;
     if(migcoldcount>50){
-      dout(1) << " MDS_COLD " << __func__ << " find 1000 cold fragments, stop " << dendl;
+      dout(1) << " MDS_COLD " << __func__ << " find 50 cold fragments, stop " << dendl;
       return;}
     }
 //    sleep(100)
@@ -1311,7 +1311,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   // grab some sufficiently big small items
   //multimap<double,CDir*>::iterator it;
   for (it = smaller.begin();
-       it != smaller.end() && migcoldcount<=1000 ;
+       it != smaller.end() && migcoldcount<=50 ;
        ++it) {
 
     #ifdef MDS_MONITOR
