@@ -58,6 +58,7 @@ using std::vector;
 #undef dendl
 #define dendl dendl_impl; } while (0)
 
+#define COLDSTART_MIGCOUNT 100
 
 #define MIN_LOAD    50   //  ??
 #define MIN_REEXPORT 5  // will automatically reexport
@@ -1296,8 +1297,8 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     already_exporting.insert((*it).second);
     have += (*it).first;
     migcoldcount++;
-    if(migcoldcount>50){
-      dout(1) << " MDS_COLD " << __func__ << " find 50 cold fragments, stop " << dendl;
+    if(migcoldcount>COLDSTART_MIGCOUNT){
+      dout(1) << " MDS_COLD " << __func__ << " find "<< COLDSTART_MIGCOUNT <<" cold fragments, stop " << dendl;
       return;}
     }
 //    sleep(100)
@@ -1311,7 +1312,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   // grab some sufficiently big small items
   //multimap<double,CDir*>::iterator it;
   for (it = smaller.begin();
-       it != smaller.end() && migcoldcount<=50 ;
+       it != smaller.end() && migcoldcount<=COLDSTART_MIGCOUNT ;
        ++it) {
 
     #ifdef MDS_MONITOR
