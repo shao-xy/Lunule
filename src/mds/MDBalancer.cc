@@ -1244,7 +1244,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   #endif  
 
   double subdir_sum = 0;
-  int inode_mod_dest = 0;
+  int fnode_mod_dest = 0;
   for (auto it = dir->begin(); it != dir->end(); ++it) {
     CInode *in = it->second->get_linkage()->get_inode();
     if (!in) continue;
@@ -1267,7 +1267,8 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       subdir_sum += pop;
       dout(1) << " subdir pop " << pop << " " << *subdir << dendl;
 
-      int fnode_mod_dest = int(subdir->get_frag())%cluster_size;
+      fnode_mod_dest = int(subdir->get_frag())%cluster_size;
+      dout(1) << " MDS_COLD " << __func__ << " frag: " << subdir->get_frag() << " target: " << dest << dendl; 
       if (pop < minchunk ) {
         if (dest == fnode_mod_dest)
         {
