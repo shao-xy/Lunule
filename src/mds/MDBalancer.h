@@ -96,13 +96,14 @@ private:
   void find_exports_dominator(CDir *dir,
                               double amount,
                               list<CDir*>& exports,
-                              double& have,
+                              double& have, mds_rank_t dest,
                               set<CDir*>& already_exporting);
   void find_exports_coldfirst(CDir *dir,
                     double amount,
                     list<CDir*>& exports,
                     double& have,
                     set<CDir*>& already_exporting,
+                    mds_rank_t dest,
                     int descend_depth);
   void find_exports(CDir *dir,
                     double amount,

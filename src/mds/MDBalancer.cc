@@ -1098,7 +1098,7 @@ void MDBalancer::try_rebalance(balance_state_t& state)
       if ((*pot)->get_inode()->is_stray()) continue;
 
       #ifdef MDS_COLDFIRST_BALANCER
-      find_exports_dominator(*pot, amount, exports, have, already_exporting);
+      find_exports_dominator(*pot, amount, exports, have, target, already_exporting);
       #endif
       #ifndef MDS_COLDFIRST_BALANCER
       find_exports(*pot, amount, exports, have, already_exporting);
@@ -1143,6 +1143,7 @@ void MDBalancer::find_exports_dominator(CDir *dir,
                               double amount,
                               list<CDir*>& exports,
                               double& have,
+                              mds_rank_t dest,
                               set<CDir*>& already_exporting)
 {
   double need = amount - have;
@@ -1201,7 +1202,7 @@ void MDBalancer::find_exports_dominator(CDir *dir,
        it != bigger_rep.end();
        ++it) {
     dout(1) << " MDS_COLD " << __func__ << "   descending into big" << **it << dendl;
-    find_exports_coldfirst(*it, amount, exports, have, already_exporting, 5);
+    find_exports_coldfirst(*it, amount, exports, have, already_exporting, dest, 5);
     if (have > needmin){
       dout(1) << " MDS_COLD " << __func__ << " good" <<dendl;
       return;
@@ -1215,8 +1216,10 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
                               list<CDir*>& exports,
                               double& have,
                               set<CDir*>& already_exporting, 
+                              mds_rank_t dest,
                               int descend_depth)
 {
+  int cluster_size = mds->get_mds_map()->get_num_in_mds();
   double need = amount - have;
   if (need < amount * g_conf->mds_bal_min_start)
     return;   // good enough!
@@ -1265,9 +1268,14 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
 
 
       if (pop < minchunk ) {
-      verycold.insert(pair<double,CDir*>(pop, subdir));
-      coldcount++;
-      dout(1) << " MDS_COLD " << __func__ << " find a clod " << *((*it).second) << " pop: " << pop << dendl;
+        if (target == (in)%cluster_size)
+        {
+          verycold.insert(pair<double,CDir*>(pop, subdir));
+          coldcount++;
+          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a cold " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << target << " pop: " << pop << dendl;
+        }else{
+          dout(1) << " MDS_COLD " << __func__ << " cold unmatched: find a cold " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << target << " pop: " << pop << dendl;
+        }
       }
       else if (pop > needmin) {
         if (subdir->is_rep()){
@@ -1279,10 +1287,15 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
         }
       }
       else{
-        dout(1) << " MDS_COLD " << __func__ << " find a smaller " << *((*it).second) << " pop: " << pop << dendl;
-        smaller.insert(pair<double,CDir*>(pop, subdir));
+        if (target == (in)%cluster_size)
+        {
+          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a smaller " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << target << " pop: " << pop << dendl;
+          smaller.insert(pair<double,CDir*>(pop, subdir));
+        }else{
+          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a smaller " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << target << " pop: " << pop << dendl;
+        }
     }
-
+    
     }
   }
   dout(15) << "   sum " << subdir_sum << " / " << dir_pop << dendl;
@@ -1337,7 +1350,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
        it != smaller.rend();
        ++it) {
     dout(1) << " MDS_COLD " << __func__ << " descending into a smaller big " << *((*it).second) << dendl;
-    find_exports_coldfirst((*it).second, amount, exports, have, already_exporting, descend_depth-1);
+    find_exports_coldfirst((*it).second, amount, exports, have, already_exporting, dest, descend_depth-1);
     if (have > needmin){
       dout(1) << " MDS_COLD " << __func__ << " good" <<dendl;
       return;
@@ -1350,7 +1363,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
        it != bigger_rep.end();
        ++it) {
     dout(1) << " MDS_COLD " << __func__ << "   descending into big" << **it << dendl;
-    find_exports_coldfirst(*it, amount, exports, have, already_exporting, descend_depth-1);
+    find_exports_coldfirst(*it, amount, exports, have, already_exporting, dest, descend_depth-1);
     if (have > needmin){
       dout(1) << " MDS_COLD " << __func__ << " good" <<dendl;
       return;
