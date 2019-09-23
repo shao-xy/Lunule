@@ -1244,6 +1244,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   #endif  
 
   double subdir_sum = 0;
+  int inode_mod_dest = 0;
   for (auto it = dir->begin(); it != dir->end(); ++it) {
     CInode *in = it->second->get_linkage()->get_inode();
     if (!in) continue;
@@ -1266,15 +1267,15 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       subdir_sum += pop;
       dout(1) << " subdir pop " << pop << " " << *subdir << dendl;
 
-
+      inode_mod_dest = int(in->get_inode())%cluster_size;
       if (pop < minchunk ) {
-        if (target == (in)%cluster_size)
+        if (dest == inode_mod_dest)
         {
           verycold.insert(pair<double,CDir*>(pop, subdir));
           coldcount++;
-          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a cold " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << target << " pop: " << pop << dendl;
+          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a cold " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << inode_mod_dest << " pop: " << pop << dendl;
         }else{
-          dout(1) << " MDS_COLD " << __func__ << " cold unmatched: find a cold " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << target << " pop: " << pop << dendl;
+          dout(1) << " MDS_COLD " << __func__ << " cold unmatched: find a cold " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << inode_mod_dest << " pop: " << pop << dendl;
         }
       }
       else if (pop > needmin) {
@@ -1287,15 +1288,15 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
         }
       }
       else{
-        if (target == (in)%cluster_size)
+        if (dest == (in)%cluster_size)
         {
-          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a smaller " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << target << " pop: " << pop << dendl;
+          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a smaller " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << inode_mod_dest << " pop: " << pop << dendl;
           smaller.insert(pair<double,CDir*>(pop, subdir));
         }else{
-          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a smaller " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << target << " pop: " << pop << dendl;
+          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a smaller " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << inode_mod_dest << " pop: " << pop << dendl;
         }
     }
-    
+
     }
   }
   dout(15) << "   sum " << subdir_sum << " / " << dir_pop << dendl;
