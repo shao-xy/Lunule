@@ -1267,15 +1267,15 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       subdir_sum += pop;
       dout(1) << " subdir pop " << pop << " " << *subdir << dendl;
 
-      inode_mod_dest = int(subdir->get_frag())%cluster_size;
+      fnode_mod_dest = int(subdir->get_frag())%cluster_size;
       if (pop < minchunk ) {
-        if (dest == inode_mod_dest)
+        if (dest == fnode_mod_dest)
         {
           verycold.insert(pair<double,CDir*>(pop, subdir));
           coldcount++;
-          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a cold " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << inode_mod_dest << " pop: " << pop << dendl;
+          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a cold " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << fnode_mod_dest << " pop: " << pop << dendl;
         }else{
-          dout(1) << " MDS_COLD " << __func__ << " cold unmatched: find a cold " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << inode_mod_dest << " pop: " << pop << dendl;
+          dout(1) << " MDS_COLD " << __func__ << " cold unmatched: find a cold " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << fnode_mod_dest << " pop: " << pop << dendl;
         }
       }
       else if (pop > needmin) {
@@ -1288,12 +1288,12 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
         }
       }
       else{
-        if (dest == (in)%cluster_size)
+        if (dest == fnode_mod_dest)
         {
-          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a smaller " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << inode_mod_dest << " pop: " << pop << dendl;
+          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a smaller " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << fnode_mod_dest << " pop: " << pop << dendl;
           smaller.insert(pair<double,CDir*>(pop, subdir));
         }else{
-          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a smaller " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << inode_mod_dest << " pop: " << pop << dendl;
+          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a smaller " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << fnode_mod_dest << " pop: " << pop << dendl;
         }
     }
 
