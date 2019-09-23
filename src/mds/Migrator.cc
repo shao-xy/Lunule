@@ -80,6 +80,8 @@
 #undef dout_prefix
 #define dout_prefix *_dout << "mds." << mds->get_nodeid() << ".migrator "
 
+#define TWOLEVEL_MIGRATION
+
 // -- cons --
 Migrator::Migrator(MDSRank *m, MDCache *c) : mds(m), cache(c) {
   #ifdef MDS_MIGRATOR_IPC
@@ -856,6 +858,14 @@ void Migrator::export_dir(CDir *dir, mds_rank_t dest)
     dout(7) << "already exporting" << dendl;
     return;
   }
+
+  #ifdef TWOLEVEL_MIGRATION
+  //start to export
+  const entity_inst_t target_entity = mds->mdsmap->get_inst(dest);
+  const entity_inst_t my_entity = mds->mdsmap->get_inst(mds->get_nodeid());
+  bool is_the_same_host = target_entity.addr.is_same_host(my_entity.addr);
+  dout(1) << " TWOLEVEL_MIGRATION " << __func__ << " From [SRC] " <<  mds->get_nodeid() << " export dir: " << *dir << " to [DEST] " << dest << " samehost: " << is_the_same_host << dendl;
+  #endif
 
   if (g_conf->mds_thrash_exports) {
     // create random subtree bound (which will not be exported)
