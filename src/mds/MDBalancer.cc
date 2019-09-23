@@ -1268,7 +1268,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       dout(1) << " subdir pop " << pop << " " << *subdir << dendl;
 
       inode_mod_dest = int(subdir->ino())%cluster_size;
-      dout(1) << " MDS_COLD " << __func__ << " frag: " << subdir->get_frag() << " target: " << dest << dendl; 
+      dout(1) << " MDS_COLD " << __func__ << " frag: " << subdir->ino() << " target: " << dest << dendl; 
       if (pop < minchunk ) {
         if (dest == inode_mod_dest)
         {
