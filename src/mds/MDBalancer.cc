@@ -961,6 +961,9 @@ void MDBalancer::try_rebalance(balance_state_t& state)
       dout(5) << " exporting idle (" << pop << ") import " << *im
 	      << " back to mds." << im->inode->authority().first
 	      << dendl;
+
+      dout(1) << " TWOLEVEL_MIGRATION " << __func__ << " [SRC] " <<  mds->get_nodeid() << " [SRCHOST] " << mds->mdsmap->get_inst(mds->get_nodeid()).entity_addr_t << " [DIRPOP] " << pop << "[DIRSIZE]" << dir.get_frag_size() << " [DEST] " << dest << " [DESTHOST] "<<mds->mdsmap->get_inst(im->inode->authority().first).entity_addr_t << dendl;
+  
       mds->mdcache->migrator->export_dir_nicely(im, im->inode->authority().first);
       continue;
     }
@@ -1028,7 +1031,9 @@ void MDBalancer::try_rebalance(balance_state_t& state)
 		  << " pop " << pop
 		  << " back to mds." << target << dendl;
    
-	  mds->mdcache->migrator->export_dir_nicely(dir, target);
+    dout(1) << " TWOLEVEL_MIGRATION " << __func__ << " [SRC] " <<  mds->get_nodeid() << " [SRCHOST] " << mds->mdsmap->get_inst(mds->get_nodeid()).entity_addr_t << " [DIRPOP] " << pop << "[DIRSIZE]" << dir.get_frag_size() << " [DEST] " << dest << " [DESTHOST] "<<mds->mdsmap->get_inst(target).entity_addr_t << dendl;
+	  
+    mds->mdcache->migrator->export_dir_nicely(dir, target);
 	  have += pop;
     #ifdef MDS_MONITOR
     dout(7) << " MDS_MONITOR " << __func__ << " (3) Have " << have << " reexporting " << *dir << " pop " << pop << " back to mds." << target <<dendl;
@@ -1109,6 +1114,9 @@ void MDBalancer::try_rebalance(balance_state_t& state)
       dout(7) << " MDS_MONITOR " << __func__ << " (5) exporting " << (*it)->pop_auth_subtree << "  " << (*it)->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate)
        << " to mds." << target << " DIR " << **it <<dendl;
       #endif
+
+      dout(1) << " TWOLEVEL_MIGRATION " << __func__ << " [SRC] " <<  mds->get_nodeid() << " [SRCHOST] " << mds->mdsmap->get_inst(mds->get_nodeid()).entity_addr_t << " [DIRPOP] " << (*it)->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate) << "[DIRSIZE]" << (*it).get_frag_size() << " [DEST] " << dest << " [DESTHOST] "<<mds->mdsmap->get_inst(target).entity_addr_t << dendl;
+
       mds->mdcache->migrator->export_dir_nicely(*it, target);
     }
   }

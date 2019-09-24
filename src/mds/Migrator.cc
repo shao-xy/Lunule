@@ -864,7 +864,7 @@ void Migrator::export_dir(CDir *dir, mds_rank_t dest)
   const entity_inst_t target_entity = mds->mdsmap->get_inst(dest);
   const entity_inst_t my_entity = mds->mdsmap->get_inst(mds->get_nodeid());
   bool is_the_same_host = target_entity.addr.is_same_host(my_entity.addr);
-  dout(1) << " TWOLEVEL_MIGRATION " << __func__ << " From [SRC] " <<  mds->get_nodeid() << " export dir: " << *dir << " to [DEST] " << dest << " samehost: " << is_the_same_host << dendl;
+  dout(1) << " TWOLEVEL_MIGRATION " << __func__ << " [SRC] " <<  mds->get_nodeid() << " [SRCHOST] " << target_entity.entity_addr_t << " [DIRPOP] " << (*dir)->pop_auth_subtree.meta_load() << "[DIRSIZE]" << " [DEST] " << dest << " [DESTHOST] " << is_the_same_host << dendl;
   #endif
 
   if (g_conf->mds_thrash_exports) {
