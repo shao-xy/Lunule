@@ -1115,7 +1115,7 @@ void MDBalancer::try_rebalance(balance_state_t& state)
        << " to mds." << target << " DIR " << **it <<dendl;
       #endif
 
-      dout(1) << " TWOLEVEL_MIGRATION " << __func__ << " [EPOCH] " << beat_epoch << " [SRC] " <<  mds->get_nodeid() << " [SRCHOST] " << mds->mdsmap->get_inst(mds->get_nodeid()).name << " [DIRPOP] " << (*it)->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate) << " [DIRSIZE] " << (*it)->get_frag_size() << " [DEST] " << target << " [DESTHOST] "<<mds->mdsmap->get_inst(target).addr << dendl;
+      dout(1) << " TWOLEVEL_MIGRATION " << __func__ << " [EPOCH] " << beat_epoch << " [SRC] " <<  mds->get_nodeid() << " [SRCHOST] " << mds->mdsmap->get_inst(mds->get_nodeid()).addr << " [DIRPOP] " << (*it)->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate) << " [DIRSIZE] " << (*it)->get_frag_size() << " [DEST] " << target << " [DESTHOST] "<<mds->mdsmap->get_inst(target).addr << dendl;
 
       mds->mdcache->migrator->export_dir_nicely(*it, target);
     }
