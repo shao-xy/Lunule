@@ -1249,7 +1249,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   //hash frag to mds
   int frag_mod_dest = 0;
   int hash_frag = 0;
-  std::hash<std::dirfrag_t> hash_frag_func;
+  std::hash<dirfrag_t> hash_frag_func;
 
   for (auto it = dir->begin(); it != dir->end(); ++it) {
     CInode *in = it->second->get_linkage()->get_inode();
