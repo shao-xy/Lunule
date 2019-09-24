@@ -810,28 +810,28 @@ public:
  */
 void Migrator::export_dir(CDir *dir, mds_rank_t dest)
 {
-  dout(7) << "export_dir " << *dir << " to " << dest << dendl;
+  dout(1) << "export_dir " << *dir << " to " << dest << dendl;
   assert(dir->is_auth());
   assert(dest != mds->get_nodeid());
    
   if (!(mds->is_active() || mds->is_stopping())) {
-    dout(7) << "i'm not active, no exports for now" << dendl;
+    dout(1) << "i'm not active, no exports for now" << dendl;
     return;
   }
   if (mds->mdcache->is_readonly()) {
-    dout(7) << "read-only FS, no exports for now" << dendl;
+    dout(1) << "read-only FS, no exports for now" << dendl;
     return;
   }
   if (!mds->mdsmap->is_active(dest)) {
-    dout(7) << "dest not active, no exports for now" << dendl;
+    dout(1) << "dest not active, no exports for now" << dendl;
     return;
   }
   if (mds->is_cluster_degraded()) {
-    dout(7) << "cluster degraded, no exports for now" << dendl;
+    dout(1) << "cluster degraded, no exports for now" << dendl;
     return;
   }
   if (dir->inode->is_system()) {
-    dout(7) << "i won't export system dirs (root, mdsdirs, stray, /.ceph, etc.)" << dendl;
+    dout(1) << "i won't export system dirs (root, mdsdirs, stray, /.ceph, etc.)" << dendl;
     //ceph_abort();
     return;
   }
@@ -839,23 +839,23 @@ void Migrator::export_dir(CDir *dir, mds_rank_t dest)
   CDir* parent_dir = dir->inode->get_projected_parent_dir();
   if (parent_dir && parent_dir->inode->is_stray()) {
     if (parent_dir->get_parent_dir()->ino() != MDS_INO_MDSDIR(dest)) {
-      dout(7) << "i won't export anything in stray" << dendl;
+      dout(1) << "i won't export anything in stray" << dendl;
       return;
     }
   } else {
     if (!mds->is_stopping() && !dir->inode->is_exportable(dest)) {
-      dout(7) << "dir is export pinned" << dendl;
+      dout(1) << "dir is export pinned" << dendl;
       return;
     }
   }
 
   if (dir->is_frozen() ||
       dir->is_freezing()) {
-    dout(7) << " can't export, freezing|frozen.  wait for other exports to finish first." << dendl;
+    dout(1) << " can't export, freezing|frozen.  wait for other exports to finish first." << dendl;
     return;
   }
   if (dir->state_test(CDir::STATE_EXPORTING)) {
-    dout(7) << "already exporting" << dendl;
+    dout(1) << "already exporting" << dendl;
     return;
   }
 
