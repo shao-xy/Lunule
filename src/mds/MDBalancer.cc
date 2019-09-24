@@ -33,6 +33,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <functional>
 using std::map;
 using std::vector;
 
@@ -1244,7 +1245,12 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   #endif  
 
   double subdir_sum = 0;
+
+  //hash frag to mds
   int frag_mod_dest = 0;
+  int hash_frag = 0;
+  std::hash<std::dirfrag_t> hash_frag_func;
+
   for (auto it = dir->begin(); it != dir->end(); ++it) {
     CInode *in = it->second->get_linkage()->get_inode();
     if (!in) continue;
@@ -1267,8 +1273,10 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       subdir_sum += pop;
       dout(1) << " subdir pop " << pop << " " << *subdir << dendl;
 
-      frag_mod_dest = int(subdir->get_frag().value())%cluster_size;
-      dout(1) << " MDS_COLD " << __func__ << " frag: " << subdir->get_frag().value() << " target: " << dest << dendl; 
+      //frag_mod_dest = int(subdir->get_frag().value())%cluster_size;
+      hash_frag = hash_frag_func(subdir->dirfrag());
+      frag_mod_dest = hash_frag%cluster_size;
+      dout(1) << " MDS_COLD " << __func__ << " frag: " << subdir->dirfrag() << " hash_frag: " << hash_frag << " target: " << dest << dendl; 
       if (pop < minchunk ) {
         if (dest == frag_mod_dest)
         {
