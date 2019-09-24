@@ -962,7 +962,7 @@ void MDBalancer::try_rebalance(balance_state_t& state)
 	      << " back to mds." << im->inode->authority().first
 	      << dendl;
 
-      dout(1) << " TWOLEVEL_MIGRATION " << __func__ << " [SRC] " <<  mds->get_nodeid() << " [SRCHOST] " << mds->mdsmap->get_inst(mds->get_nodeid()).addr << " [DIRPOP] " << pop << "[DIRSIZE]" << dir->get_frag_size() << " [DEST] " << im->inode->authority().first << " [DESTHOST] "<<mds->mdsmap->get_inst(im->inode->authority().first).addr << dendl;
+      dout(1) << " TWOLEVEL_MIGRATION " << __func__ << " [SRC] " <<  mds->get_nodeid() << " [SRCHOST] " << mds->mdsmap->get_inst(mds->get_nodeid()).addr << " [DIRPOP] " << pop << "[DIRSIZE]" << im->get_frag_size() << " [DEST] " << im->inode->authority().first << " [DESTHOST] "<<mds->mdsmap->get_inst(im->inode->authority().first).addr << dendl;
   
       mds->mdcache->migrator->export_dir_nicely(im, im->inode->authority().first);
       continue;
