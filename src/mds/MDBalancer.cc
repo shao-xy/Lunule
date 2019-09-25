@@ -1099,8 +1099,8 @@ void MDBalancer::try_rebalance(balance_state_t& state)
       if ((*pot)->get_inode()->is_stray()) continue;
 
       #ifdef MDS_COLDFIRST_BALANCER
-      //find_exports_dominator(*pot, amount, exports, have, target, already_exporting);
-      find_exports_coldfirst(*pot, amount, exports, have, already_exporting, target, 5);
+      find_exports_dominator(*pot, amount, exports, have, target, already_exporting);
+      //find_exports_coldfirst(*pot, amount, exports, have, already_exporting, target, 5);
       #endif
       #ifndef MDS_COLDFIRST_BALANCER
       find_exports(*pot, amount, exports, have, already_exporting);
@@ -1187,7 +1187,7 @@ void MDBalancer::find_exports_dominator(CDir *dir,
       dout(1) << " subdir pop " << pop << " " << *subdir << dendl;
 
       //if (pop > needmin) {
-      if (pop > 0.05*dir_pop) {
+      if (pop >=0 ) {
         if (subdir->is_rep()){
             dout(1) << " MDS_COLD " << __func__ << " find a big_rep " << *((*it).second) << " pop: " << pop << dendl;
             bigger_rep.push_back(subdir);
