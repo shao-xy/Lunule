@@ -1099,8 +1099,8 @@ void MDBalancer::try_rebalance(balance_state_t& state)
       if ((*pot)->get_inode()->is_stray()) continue;
 
       #ifdef MDS_COLDFIRST_BALANCER
-      find_exports_dominator(*pot, amount, exports, have, target, already_exporting);
-      //find_exports_coldfirst(*pot, amount, exports, have, already_exporting, target, 5);
+      //find_exports_dominator(*pot, amount, exports, have, target, already_exporting);
+      find_exports_coldfirst(*pot, amount, exports, have, already_exporting, target, 5);
       #endif
       #ifndef MDS_COLDFIRST_BALANCER
       find_exports(*pot, amount, exports, have, already_exporting);
@@ -1186,8 +1186,8 @@ void MDBalancer::find_exports_dominator(CDir *dir,
       subdir_sum += pop;
       dout(1) << " subdir pop " << pop << " " << *subdir << dendl;
 
-      //if (pop > needmin) {
-      if (pop >=0 ) {
+      if (pop > needmin) {
+      //if (pop >=0 ) {
         if (subdir->is_rep()){
             dout(1) << " MDS_COLD " << __func__ << " find a big_rep " << *((*it).second) << " pop: " << pop << dendl;
             bigger_rep.push_back(subdir);
@@ -1278,7 +1278,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       hash_frag = hash_frag_func(subdir->dirfrag());
       frag_mod_dest = hash_frag%cluster_size;
       dout(1) << " MDS_COLD " << __func__ << " frag: " << subdir->dirfrag() << " hash_frag: " << hash_frag << " target: " << dest << dendl; 
-      if (pop < minchunk ) {
+      if (pop < needmin ) {
         if (dest == frag_mod_dest)
         {
           verycold.insert(pair<double,CDir*>(pop, subdir));
@@ -1288,7 +1288,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
           dout(1) << " MDS_COLD " << __func__ << " cold unmatched: find a cold " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << frag_mod_dest << " pop: " << pop << dendl;
         }
       }
-      else if (pop > needmin) {
+      else if (pop > needmax) {
         if (subdir->is_rep()){
             dout(1) << " MDS_COLD " << __func__ << " find a big_rep " << *((*it).second) << " pop: " << pop << dendl;
             bigger_rep.push_back(subdir);
@@ -1312,7 +1312,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   dout(15) << "   sum " << subdir_sum << " / " << dir_pop << dendl;
 
   multimap<double,CDir*>::iterator it;
-  if(coldcount>0){
+  if(verycold.size()>0){
   dout(1) << " MDS_COLD " << __func__ << " cold first start " << dendl;
     for (it = verycold.begin();
        it != verycold.end();
@@ -1343,8 +1343,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     dout(7) << " MDS_MONITOR " << __func__ << "(3) See smaller DIR " << *((*it).second) << " pop " << (*it).first << dendl;
     #endif
 
-    if ((*it).first < midchunk)
-      break;  // try later
+    //if ((*it).first < midchunk)break;  // try later
 
     dout(7) << "   taking smaller " << *(*it).second << dendl;
     #ifdef MDS_MONITOR
