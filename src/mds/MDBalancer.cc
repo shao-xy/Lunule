@@ -1320,10 +1320,10 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     already_exporting.insert((*it).second);
     have += (*it).first;
     migcoldcount++;
-    if(migcoldcount>COLDSTART_MIGCOUNT){
+    /*if(migcoldcount>COLDSTART_MIGCOUNT){
       dout(1) << " MDS_COLD " << __func__ << " find "<< COLDSTART_MIGCOUNT <<" cold fragments, stop " << dendl;
       return;}
-    }
+    }*/
 //    sleep(100)
   }else{
     dout(1) << " MDS_COLD " << __func__ << " unable to start cold balance" <<dendl;
@@ -1334,9 +1334,9 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
 
   // grab some sufficiently big small items
   //multimap<double,CDir*>::iterator it;
-  for (it = smaller.begin();
-       it != smaller.end() && migcoldcount<=COLDSTART_MIGCOUNT ;
-       ++it) {
+//  for (it = smaller.begin();it != smaller.end() && migcoldcount<=COLDSTART_MIGCOUNT ;++it) 
+  for (it = smaller.begin();it != smaller.end(); ++it) 
+  {
 
     #ifdef MDS_MONITOR
     dout(7) << " MDS_MONITOR " << __func__ << "(3) See smaller DIR " << *((*it).second) << " pop " << (*it).first << dendl;
