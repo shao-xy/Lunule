@@ -1322,8 +1322,8 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     migcoldcount++;
     /*if(migcoldcount>COLDSTART_MIGCOUNT){
       dout(1) << " MDS_COLD " << __func__ << " find "<< COLDSTART_MIGCOUNT <<" cold fragments, stop " << dendl;
-      return;}
-    }*/
+      return;}*/
+    }
 //    sleep(100)
   }else{
     dout(1) << " MDS_COLD " << __func__ << " unable to start cold balance" <<dendl;
