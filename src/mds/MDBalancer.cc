@@ -1099,7 +1099,8 @@ void MDBalancer::try_rebalance(balance_state_t& state)
       if ((*pot)->get_inode()->is_stray()) continue;
 
       #ifdef MDS_COLDFIRST_BALANCER
-      find_exports_dominator(*pot, amount, exports, have, target, already_exporting);
+      //find_exports_dominator(*pot, amount, exports, have, target, already_exporting);
+      find_exports_coldfirst(*pot, amount, exports, have, already_exporting, target, 5);
       #endif
       #ifndef MDS_COLDFIRST_BALANCER
       find_exports(*pot, amount, exports, have, already_exporting);
