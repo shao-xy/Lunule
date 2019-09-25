@@ -59,7 +59,7 @@ using std::vector;
 #undef dendl
 #define dendl dendl_impl; } while (0)
 
-#define COLDSTART_MIGCOUNT 200
+#define COLDSTART_MIGCOUNT 1000
 
 #define MIN_LOAD    50   //  ??
 #define MIN_REEXPORT 5  // will automatically reexport
