@@ -1250,7 +1250,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   //hash frag to mds
   int frag_mod_dest = 0;
   unsigned int hash_frag = 0;
-  std::hash<frag_t> hash_frag_func;
+  std::hash<inodeno_t> hash_frag_func;
 
   for (auto it = dir->begin(); it != dir->end(); ++it) {
     CInode *in = it->second->get_linkage()->get_inode();
@@ -1275,7 +1275,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       dout(1) << " subdir pop " << pop << " " << *subdir << dendl;
 
       //frag_mod_dest = int(subdir->get_frag().value())%cluster_size;
-      hash_frag = hash_frag_func(subdir->dirfrag());
+      hash_frag = hash_frag_func(subdir->dirfrag()->inodeno_t->val);
       frag_mod_dest = hash_frag%cluster_size;
       dout(1) << " MDS_COLD " << __func__ << " frag: " << subdir->dirfrag() << " hash_frag: " << hash_frag << " target: " << dest << dendl; 
       if (pop < needmin ) {
