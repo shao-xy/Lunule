@@ -1275,10 +1275,10 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       dout(1) << " subdir pop " << pop << " " << *subdir << dendl;
 
       //frag_mod_dest = int(subdir->get_frag().value())%cluster_size;
-      hash_frag = hash_frag_func(subdir->dirfrag()->inodeno_t->val);
+      hash_frag = hash_frag_func(subdir->dirfrag().ino.val);
       frag_mod_dest = hash_frag%cluster_size;
       dout(1) << " MDS_COLD " << __func__ << " frag: " << subdir->dirfrag() << " hash_frag: " << hash_frag << " target: " << dest << dendl; 
-      if (pop < needmin ) {
+      if (pop < minchunk ) {
         if (dest == frag_mod_dest)
         {
           verycold.insert(pair<double,CDir*>(pop, subdir));
@@ -1288,7 +1288,7 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
           dout(1) << " MDS_COLD " << __func__ << " cold unmatched: find a cold " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << frag_mod_dest << " pop: " << pop << dendl;
         }
       }
-      else if (pop > needmax) {
+      else if (pop > needmin) {
         if (subdir->is_rep()){
             dout(1) << " MDS_COLD " << __func__ << " find a big_rep " << *((*it).second) << " pop: " << pop << dendl;
             bigger_rep.push_back(subdir);
