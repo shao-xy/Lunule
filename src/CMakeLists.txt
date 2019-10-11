@@ -56,7 +56,9 @@ endif(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS}")
 
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Default BUILD_TYPE is RelWithDebInfo, other options are: Debug, Release, and MinSizeRel." FORCE)
+  #set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Default BUILD_TYPE is RelWithDebInfo, other options are: Debug, Release, and MinSizeRel." FORCE)
+  set(CMAKE_BUILD_TYPE "Debug")
+  set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb")
 endif()
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL Debug)
@@ -890,6 +892,8 @@ target_link_libraries(ceph-mds mds ${CMAKE_DL_LIBS} global-static common
 install(TARGETS ceph-mds DESTINATION bin)
 
 add_subdirectory(erasure-code)
+
+add_subdirectory(ipc)
 
 # Support/Tools
 if(WITH_TESTS)

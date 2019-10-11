@@ -83,7 +83,7 @@ int IPCWorker::do_recvmsg(char * buf, size_t len)
 			return -1;
 		}
 
-		dout(20) << __func__ << " Received msg msize = " << msgbuf.msize
+		dout(0) << __func__ << " Received msg msize = " << msgbuf.msize
 				 << ", msg_id = " << msgbuf.msg_id << ", msg_seq = " << msgbuf.msg_seq
 				 << dendl;
 
@@ -253,10 +253,10 @@ Message * IPCWorker::try_recvmsg()
 	Connection * conn = msgr->get_conn(src);
 	Message * msg = decode_message(g_ceph_context, 0, header, footer, front, middle, data, conn);
 	if (msg) {
-		dout(5) << "decode message success, type: " << msg->get_type() << dendl;
+		dout(0) << "decode message success, type: " << msg->get_type() << dendl;
 	}
 	else {
-		dout(5) << "decode message failed" << dendl;
+		dout(0) << "decode message failed" << dendl;
 	}
 	return msg;
 }
@@ -378,7 +378,6 @@ bool IPCMessenger::do_sendmsg(int ipc_id, char * buffer, size_t len)
 		// dout(20) << __func__ << "  Message fragment:" << dendl;
 		show_memory(buffer, msg_size);
 
-		//if (msgsnd(ipc_id, &msgbuf, msglen, 0) < 0) {
 		int ret = msgsnd(ipc_id, &msgbuf, msglen, 0);
 		if (ret < 0) {
 			// something bad happens

@@ -48,11 +48,7 @@ using namespace std;
 
 #include "include/assert.h"
 
-#ifdef BUILDING_FOR_EMBEDDED
-extern "C" int cephd_mds(int argc, const char **argv)
-#else
 int main(int argc, const char **argv)
-#endif
 {
   vector<const char*> args;
   argv_to_vec(argc, argv, args);
