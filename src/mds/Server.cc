@@ -1526,6 +1526,17 @@ void Server::reply_client_request(MDRequestRef& mdr, MClientReply *reply)
     utime_t lat = ceph_clock_now() - mdr->client_request->get_recv_stamp();
     mds->logger->tinc(l_mds_reply_latency, lat);
     dout(20) << "lat " << lat << dendl;
+
+    // waiting and lock-retry latencies
+    dout(0) << " total latency: " << lat << dendl;
+    vector<utime_t> & tss = mdr->dispatch_timestamps;
+    assert(mdr->retry == (int)tss.size() - 1);
+    assert(tss.size() > 0);
+    dout(0) << " waiting in list: " << tss[0] - mdr->client_request->get_recv_stamp() << dendl;
+    if (tss.size() > 1) {
+      // retried request: only keeps track of the longest
+      dout(0) << " waiting for retry: " << tss.back() - tss[0] << " retried " << mdr->retry << " times." << dendl;
+    }
     
     if (tracei)
       mdr->cap_releases.erase(tracei->vino());
@@ -1868,6 +1879,9 @@ void Server::dispatch_client_request(MDRequestRef& mdr)
   if (logger) logger->inc(l_mdss_dispatch_client_request);
 
   dout(7) << "dispatch_client_request " << *req << dendl;
+
+  assert((int)mdr->dispatch_timestamps.size() == mdr->retry);
+  mdr->dispatch_timestamps.push_back(ceph_clock_now());
 
   if (req->may_write()) {
     if (mdcache->is_readonly()) {

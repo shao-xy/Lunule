@@ -1759,7 +1759,8 @@ int Client::make_request(MetaRequest *request,
   // -- log times --
   utime_t lat = ceph_clock_now();
   lat -= request->sent_stamp;
-  ldout(cct, 20) << "lat " << lat << dendl;
+  //ldout(cct, 20) << "lat " << lat << dendl;
+  ldout(cct, 0) << "lat " << lat << dendl;
   logger->tinc(l_c_lat, lat);
   logger->tinc(l_c_reply, lat);
 
