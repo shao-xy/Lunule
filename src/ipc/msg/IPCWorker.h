@@ -1,7 +1,7 @@
 #ifndef _CEPH_IPC_IPCWORKER_H_
 #define _CEPH_IPC_IPCWORKER_H_
 
-#include "ipctypes.h"
+#include "ipc/ipctypes.h"
 #include "IPCMessagePreDecoder.h"
 
 #include "common/Mutex.h"

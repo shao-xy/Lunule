@@ -1,9 +1,8 @@
 set(ipc_srcs
-	IPCMessenger.cc
-	IPCWorker.cc
-	IPCMessagePreDecoder.cc
+	IPC.cc
 )
+add_subdirectory(msg)
 add_library(ipc STATIC
-  ${ipc_srcs}
+	${ipc_srcs}
 )
-target_link_libraries(ipc common)
+target_link_libraries(ipc ipc_msgr)

@@ -4,7 +4,7 @@
 #include <vector>
 using std::vector;
 
-#include "ipctypes.h"
+#include "ipc/ipctypes.h"
 
 #include "include/buffer.h"
 

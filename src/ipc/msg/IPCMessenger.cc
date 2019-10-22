@@ -10,7 +10,8 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 
-#include "IPC.h"
+#include "ipc/IPC.h"
+
 #include "IPCMessenger.h"
 #include "IPCWorker.h"
 
@@ -210,56 +211,13 @@ bool IPCMessenger::_sendto(ipc_rank_t rank, char * buffer, size_t len)
 {
 	assert(msgr_mutex.is_locked());
 
-	static int msg_id = -1;
-	msg_id++;
-	dout(20) << __func__ << " IPC Message ID: " << msg_id << dendl;
-
 	ipc_mqid_t mq_id = _create_or_get(rank)->mq_id;
 	dout(20) << __func__ << " IPC [mq_id = " << mq_id << "] length = " << len << dendl;
 
 	assert(msg_size == IPC_DEFAULT_MSG_SIZE);
 	if (len <= 0)	return false;
 
-	ipcmsg_t msgbuf;
-	size_t msglen = sizeof(ipcmsg_t) - sizeof(long);
-	msgbuf.mtype = IPC_MSG_TYPE_DEFAULT;
-	memset(&msgbuf.mtext, 0, IPC_DEFAULT_MSG_SIZE);
-	msgbuf.msg_id = msg_id;
-	int msg_seq = 0;
-	while (len > msg_size) {
-		msgbuf.msize = msg_size + 1;
-		msgbuf.msg_seq = msg_seq++;
-		memcpy(&msgbuf.mtext, buffer, msg_size);
-		len -= msg_size;
-		buffer += msg_size;
-
-		dout(20) << __func__ << " IPC (mq_id = " << mq_id << ", trunk size= " << msglen
-				 << ", msg_id = " << msg_id << ", msg_seq = " << msgbuf.msg_seq
-				 << "): send size = " << msg_size << ", left: " << len << dendl;
-
-		int ret = msgsnd(mq_id, &msgbuf, msglen, 0);
-		if (ret < 0) {
-			// something bad happens
-			//dout(1) << __func__ << " IPC failed for this chunk." << dendl;
-			dout(1) << __func__ << " IPC failed for this chunk. (return value: " << ret << ", ERRNO: " << strerror(errno) << ")" << dendl;
-			return false;
-		}
-	}
-
-	msgbuf.msize = len;
-	msgbuf.msg_seq = msg_seq++;
-	memcpy(&msgbuf.mtext, buffer, len);
-	dout(20) << __func__ << " IPC (mq_id = " << mq_id << ", trunk size= " << msglen
-			 << ", msg_id = " << msg_id << ", msg_seq = " << msgbuf.msg_seq 
-			 << "): send size = " << len << ", no more left." << dendl;
-
-	int ret = msgsnd(mq_id, &msgbuf, msglen, 0);
-	if (ret < 0) {
-		// something bad happens
-		dout(1) << __func__ << " IPC failed for this chunk. (return value: " << ret << ", ERRNO: " << strerror(errno) << ")" << dendl;
-		return false;
-	}
-	return true;
+	return IPC_raw_send(mq_id, buffer, len);
 }
 
 IPC_entity_t * IPCMessenger::create_or_get(ipc_rank_t rank)
