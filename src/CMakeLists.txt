@@ -889,6 +889,7 @@ target_link_libraries(ceph-mds mds ${CMAKE_DL_LIBS} global-static common
 install(TARGETS ceph-mds DESTINATION bin)
 
 add_subdirectory(erasure-code)
+add_subdirectory(ipc)
 
 # Support/Tools
 if(WITH_TESTS)
