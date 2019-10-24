@@ -51,7 +51,7 @@ void * IPCProcessor::entry()
 	assert(msgr);
 
 	int key = IPCMessenger::get_listen_key(msgr->get_nodeid());
-	ipc_mqid_t mq_id = msgget(key, IPC_CREAT | 0666);
+	ipc_mqid_t mq_id = IPC_raw_create(key);
 	dout(0) << "IPCProcessor listening on IPC tunnel key = " << key << ", mqueue id = " << mq_id << dendl;
 
 	ipc_rank_t target;
@@ -139,7 +139,7 @@ bool IPCMessenger::_send_message_fragments(const ipc_rank_t target, const ceph_m
 
 	dout(20) << __func__ << " ipc target = " << target << dendl;
 
-	dout(20) << __func__ << " IPC sender prepare envelope type =  " << header.type
+	dout(20) << __func__ << " IPC sender prepare envelope type = " << header.type
     	<< " src " << entity_name_t(header.src)
     	<< " front=" << header.front_len
     	<< " middle=" << header.middle_len
@@ -207,7 +207,7 @@ bool IPCMessenger::sendto(ipc_rank_t rank, char * buffer, size_t len)
 	return _sendto(rank, buffer, len);
 }
 
-bool IPCMessenger::_sendto(ipc_rank_t rank, char * buffer, size_t len)
+bool IPCMessenger::_sendto(ipc_rank_t rank, char * buffer, size_t len, long message_type)
 {
 	assert(msgr_mutex.is_locked());
 
@@ -217,7 +217,7 @@ bool IPCMessenger::_sendto(ipc_rank_t rank, char * buffer, size_t len)
 	assert(msg_size == IPC_DEFAULT_MSG_SIZE);
 	if (len <= 0)	return false;
 
-	return IPC_raw_send(mq_id, buffer, len);
+	return IPC_raw_send(mq_id, buffer, len) == len;
 }
 
 IPC_entity_t * IPCMessenger::create_or_get(ipc_rank_t rank)
@@ -267,7 +267,7 @@ IPC_entity_t * IPCMessenger::_create_connected_entity(ipc_rank_t target)
 	// ensure that target listen to us
 	dout(20) << "Create handshape socket for rank " << target << " and acquire for listening" << dendl;
 	int listen_key = IPCMessenger::get_listen_key(target);
-	ipc_mqid_t listen_mqid = msgget(listen_key, IPC_CREAT | 0666);
+	ipc_mqid_t listen_mqid = IPC_raw_create(listen_key);
 	if (listen_mqid  < 0) {
 		dout(5) << "Create handshape socket failed (ERRNO: " << strerror(errno) << ", Listen Key = " << listen_key << ", Message Queue ID = " << listen_mqid << dendl;
 		return NULL;
@@ -287,7 +287,7 @@ IPC_entity_t * IPCMessenger::_create_connected_entity(ipc_rank_t target)
 
 	// send tunnel
 	int conn_key = IPCMessenger::get_conn_key(whoami, target);
-	ipc_mqid_t conn_mqid = msgget(conn_key, IPC_CREAT | 0666);
+	ipc_mqid_t conn_mqid = IPC_raw_create(conn_key);
 	if (conn_mqid < 0) {
 		dout(5) << "Create IPC pipe failed for target " << target << dendl;
 		return NULL;
@@ -322,6 +322,7 @@ void IPCMessenger::shutdown()
 	// shutdown processor
 	// shutdown workers
 	for (IPCWorker * worker : workers) {
-	
+		worker->mark_shutdown();
+		worker->join();
 	}
 }

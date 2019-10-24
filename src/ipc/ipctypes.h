@@ -1,6 +1,8 @@
 #ifndef _CEPH_IPC_IPCTYPES_H_
 #define _CEPH_IPC_IPCTYPES_H_
 
+#include <cstddef>
+
 typedef int ipc_rank_t;
 typedef int ipc_mqid_t;
 
@@ -16,8 +18,8 @@ struct IPC_entity_t {
 #define IPC_MSG_TYPE_CONNECTION 2
 #define IPC_MSG_TYPE_SHUTDOWN 3
 
-//#define IPC_DEFAULT_MSG_SIZE 1024
-#define IPC_DEFAULT_MSG_SIZE 1048576
+#define IPC_DEFAULT_MSG_SIZE 1024
+//#define IPC_DEFAULT_MSG_SIZE 1048576
 
 #define IPC_TARGET_FAKE_SHUTDOWN 100
 

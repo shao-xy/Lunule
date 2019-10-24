@@ -69,7 +69,7 @@ private:
 
 	bool _send_message(Message * m, ipc_rank_t target);
 	bool _send_message_fragments(ipc_rank_t target, const ceph_msg_header & header, const ceph_msg_footer & footer, bufferlist &blist);
-	bool _sendto(ipc_rank_t rank, char * buffer, size_t len);
+	bool _sendto(ipc_rank_t rank, char * buffer, size_t len, long message_type = IPC_MSG_TYPE_DEFAULT);
 };
 
 #endif /* ipc/IPCMessenger.h */

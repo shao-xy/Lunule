@@ -17,6 +17,7 @@ class IPCWorker : public Thread {
 protected:
 	IPCMessenger * msgr;
 	IPC_entity_t src;
+	bool run_flag;
 private:
 	IPCMessagePreDecoder * pre_decoder;
 	Mutex mutex;
@@ -26,9 +27,9 @@ private:
 	Message * pre_decode_message(CephContext * cct, ceph_msg_header & header, ceph_msg_footer & footer, bufferlist & front, bufferlist & middle, bufferlist & data, Connection * conn);
 
 public:
-	explicit IPCWorker(IPCMessenger * msgr = NULL) : msgr(msgr), src(-1, -1), pre_decoder(get_pre_decoder()), mutex("IPCWorker::mutex") {}
+	explicit IPCWorker(IPCMessenger * msgr = NULL) : msgr(msgr), src(-1, -1), run_flag(true), pre_decoder(get_pre_decoder()), mutex("IPCWorker::mutex") {}
 	IPCWorker(IPCMessenger * msgr, ipc_rank_t from)
-		: msgr(msgr), src(from, -1), pre_decoder(get_pre_decoder()), mutex("IPCWorker(" + std::to_string((int)from) + ")::mutex") {}
+		: msgr(msgr), src(from, -1), run_flag(true), pre_decoder(get_pre_decoder()), mutex("IPCWorker(" + std::to_string((int)from) + ")::mutex") {}
 	virtual ~IPCWorker() {}
 
 	int recv_raw(char * buf, size_t len);
@@ -37,6 +38,8 @@ public:
 	ipc_rank_t get_peer() { return src.rank; }
 	ipc_mqid_t get_mqueue_id() { return src.mq_id; }
 	virtual string name();
+
+	void mark_shutdown();
 
 protected:
 	void * entry() override;

@@ -6,4 +6,4 @@ set(ipc_msgr_srcs
 add_library(ipc_msgr STATIC
   ${ipc_msgr_srcs}
 )
-target_link_libraries(ipc_msgr common)
+target_link_libraries(ipc_msgr ipc_raw common)
