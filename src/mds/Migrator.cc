@@ -860,7 +860,7 @@ void Migrator::export_dir(CDir *dir, mds_rank_t dest)
   }
   struct timeval timeStart;
   gettimeofday(&timeStart,NULL);
-  dout(0) << " START_MIGRATION " << __func__ << " Migration Start time:\t" << timeStart.tv_sec<<"."<<timeStart.tv_usec<<"\t" <<  << dendl;
+  dout(0) << " START_MIGRATION " << __func__ << " Migration Start time:\t" << timeStart.tv_sec<<"."<<timeStart.tv_usec<< dendl;
   /*
   #ifdef TWOLEVEL_MIGRATION
   //start to export
