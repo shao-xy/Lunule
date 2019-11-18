@@ -858,9 +858,7 @@ void Migrator::export_dir(CDir *dir, mds_rank_t dest)
     dout(7) << "already exporting" << dendl;
     return;
   }
-  struct timeval timeStart;
-  gettimeofday(&timeStart,NULL);
-  dout(0) << " START_MIGRATION " << __func__ << " Migration Start time:\t" << timeStart.tv_sec<<"."<<timeStart.tv_usec<< dendl;
+  
   /*
   #ifdef TWOLEVEL_MIGRATION
   //start to export
@@ -909,7 +907,10 @@ void Migrator::export_dir(CDir *dir, mds_rank_t dest)
   stat.peer = dest;
   stat.tid = mdr->reqid.tid;
   stat.mut = mdr;
- 
+  
+  struct timeval timeStart;
+  gettimeofday(&timeStart,NULL);
+  dout(0) << " START_MIGRATION " << __func__ << " Migration Start time:\t" << timeStart.tv_sec<<"."<<timeStart.tv_usec << dendl;
   return mds->mdcache->dispatch_request(mdr);
 }
 
