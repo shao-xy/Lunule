@@ -908,9 +908,6 @@ void Migrator::export_dir(CDir *dir, mds_rank_t dest)
   stat.tid = mdr->reqid.tid;
   stat.mut = mdr;
   
-  struct timeval timeStart;
-  gettimeofday(&timeStart,NULL);
-  dout(0) << " START_MIGRATION " << __func__ << " Migration Start time:\t" << timeStart.tv_sec<<"."<<timeStart.tv_usec << dendl;
   return mds->mdcache->dispatch_request(mdr);
 }
 
@@ -1297,6 +1294,11 @@ void Migrator::export_frozen(CDir *dir, uint64_t tid)
   dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (6) send a prepare message!" << dendl;
   rtt_prepare_start[dir] = ceph_clock_now();
   #endif
+  
+  struct timeval timeStart;
+  gettimeofday(&timeStart,NULL);
+  dout(0) << " START_MIGRATION " << __func__ << " Migration Start time:\t" << timeStart.tv_sec<<"."<<timeStart.tv_usec << dendl;
+
   mds->send_message_mds(prep, it->second.peer);
   assert (g_conf->mds_kill_export_at != 4);
 
