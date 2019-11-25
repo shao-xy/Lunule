@@ -49,9 +49,6 @@
 #include "common/errno.h"
 #include "common/perf_counters.h"
 #include "common/safe_io.h"
-#ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
-#include "common/Clock.h"
-#endif
 
 #include "osdc/Journaler.h"
 #include "osdc/Filer.h"
@@ -112,6 +109,9 @@ using namespace std;
 #include "include/assert.h"
 
 #include "adsl/tags.h"
+#ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
+#include "adsl/util.h"
+#endif
 
 #define dout_context g_ceph_context
 #define dout_subsys ceph_subsys_mds
@@ -12030,7 +12030,7 @@ C_MDS_RetryRequest::C_MDS_RetryRequest(MDCache *c, MDRequestRef& r)
 {
   if (r->fromServer) {
     MClientRequest *req = mdr->client_request;
-    dout(0) << ADSLTAG_MIGRATION_CORRE_REQUEST << " " << (double)ceph_clock_now() << " Pending request: " << ceph_mds_op_name(req->get_op()) << " on " << req->get_path() << dendl;
+    dout(0) << ADSLTAG_MIGRATION_CORRE_REQUEST << " " << now2str() << " Pending request: " << ceph_mds_op_name(req->get_op()) << " on " << req->get_path() << dendl;
   }
 }
 #else
