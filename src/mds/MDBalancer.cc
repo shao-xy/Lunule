@@ -39,7 +39,9 @@ using std::vector;
 #include "common/config.h"
 #include "common/errno.h"
 
-#define MDS_MONITOR
+//#define MDS_MONITOR
+
+#include "adsl/tags.h"
 
 #define dout_context g_ceph_context
 #define dout_subsys ceph_subsys_mds
@@ -1136,6 +1138,7 @@ void MDBalancer::find_exports(CDir *dir,
 
   double dir_pop = dir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
   dout(7) << " find_exports in " << dir_pop << " " << *dir << " need " << need << " (" << needmin << " - " << needmax << ")" << dendl;
+
   #ifdef MDS_MONITOR
   dout(7) << " MDS_MONITOR " << __func__ << " needmax " << needmax << " needmin " << needmin << " midchunk " << midchunk << " minchunk " << minchunk << dendl;
   dout(7) << " MDS_MONITOR " << __func__ << "(1) Find DIR " << *dir << " pop " << dir_pop << 
@@ -1172,10 +1175,15 @@ void MDBalancer::find_exports(CDir *dir,
 
       // lucky find?
       if (pop > needmin && pop < needmax) {
-        #ifdef MDS_MONITOR
-  dout(7) << " MDS_MONITOR " << __func__ << "(2) Lucky Find DIR " << *subdir << " pop " << pop << 
-  " needmin~needmax " << needmin << " ~ " << needmax << " have " << have << " need " << need << dendl;
-  #endif 
+        #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+      dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << ceph_clock_now() << *subdir << "ChooseLucky " << " pop: " << pop << dendl;
+      #endif
+
+      #ifdef MDS_MONITOR
+      dout(7) << " MDS_MONITOR " << __func__ << "(2) Lucky Find DIR " << *subdir << " pop " << pop << 
+      " needmin~needmax " << needmin << " ~ " << needmax << " have " << have << " need " << need << dendl;
+      #endif 
+
 	exports.push_back(subdir);
 	already_exporting.insert(subdir);
 	have += pop;
@@ -1213,6 +1221,11 @@ void MDBalancer::find_exports(CDir *dir,
     exports.push_back((*it).second);
     already_exporting.insert((*it).second);
     have += (*it).first;
+
+    #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << ceph_clock_now() << *((*it).second) << "ChooseBigSmall " << " pop: " << (*it).first << dendl;
+    #endif
+
     if (have > needmin)
       return;
   }
@@ -1240,6 +1253,11 @@ void MDBalancer::find_exports(CDir *dir,
   #endif
     exports.push_back((*it).second);
     already_exporting.insert((*it).second);
+
+    #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << ceph_clock_now() << *((*it).second) << "ChooseSmallSmall " <<" pop: " << (*it).first << dendl;
+    #endif
+
     have += (*it).first;
     if (have > needmin)
       return;
