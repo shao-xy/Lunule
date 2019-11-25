@@ -52,7 +52,6 @@
 #include "messages/MExportCapsAck.h"
 #include "messages/MGatherCaps.h"
 
-#include "MigratorIPC.h"
 /*
  * this is what the dir->dir_auth values look like
  *
@@ -87,15 +86,6 @@
 
 // -- cons --
 Migrator::Migrator(MDSRank *m, MDCache *c) : mds(m), cache(c) {
-  #ifdef MDS_MIGRATOR_IPC
-  pthread_t tid_ipc_migrate;
-  int res = pthread_create(&tid_ipc_migrate, NULL, ipc_migrator, this);
-  if(res < 0){
-    dout(0) << __func__ << " create ipc thread failed." << dendl;
-    exit(-1); 
-  }
-  pthread_detach(tid_ipc_migrate);
-  #endif
 }
 
 class MigratorContext : public MDSInternalContextBase {
