@@ -1225,7 +1225,7 @@ void Server::respond_to_request(MDRequestRef& mdr, int r)
 {
 #ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
   MClientRequest * req = mdr->client_request;
-  dout(0) << ADSLTAG_MIGRATION_CORRE_REQUEST << " " << ceph_clock_now() << " Finishing request: " << ceph_mds_op_name(req->get_op()) << " on " << req->get_path() << dendl;
+  dout(0) << ADSLTAG_MIGRATION_CORRE_REQUEST << " " << (double)ceph_clock_now() << " Finishing request: " << ceph_mds_op_name(req->get_op()) << " on " << req->get_path() << dendl;
 #endif
 
   if (mdr->client_request) {
@@ -1890,7 +1890,7 @@ void Server::dispatch_client_request(MDRequestRef& mdr)
   dout(7) << "dispatch_client_request " << *req << dendl;
 
 #ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
-  dout(0) << ADSLTAG_MIGRATION_CORRE_REQUEST << " " << ceph_clock_now() << " Handling request: " << ceph_mds_op_name(req->get_op()) << " on " << req->get_path() << dendl;
+  dout(0) << ADSLTAG_MIGRATION_CORRE_REQUEST << " " << (double)ceph_clock_now() << " Handling request: " << ceph_mds_op_name(req->get_op()) << " on " << req->get_path() << dendl;
   assert((int)mdr->dispatch_timestamps.size() == mdr->retry);
   mdr->dispatch_timestamps.push_back(ceph_clock_now());
 #endif
