@@ -19,8 +19,8 @@
 
 #include "include/types.h"
 
-#define MDS_MONITOR_MIGRATOR
-#define MDS_MIGRATOR_IPC
+//#define MDS_MONITOR_MIGRATOR
+//#define MDS_MIGRATOR_IPC
 
 #ifdef MDS_MIGRATOR_IPC
 #include "MigratorIPC.h"
