@@ -1223,6 +1223,11 @@ void Server::submit_mdlog_entry(LogEvent *le, MDSLogContextBase *fin, MDRequestR
  */
 void Server::respond_to_request(MDRequestRef& mdr, int r)
 {
+#ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
+  MClientRequest * req = mdr->client_request;
+  dout(0) << ADSLTAG_MIGRATION_CORRE_REQUEST << " " << ceph_clock_now() << " Finishing request: " << ceph_mds_op_name(req->get_op()) << " on " << req->get_path() << dendl;
+#endif
+
   if (mdr->client_request) {
     reply_client_request(mdr, new MClientReply(mdr->client_request, r));
 
@@ -1818,6 +1823,10 @@ void Server::handle_client_request(MClientRequest *req)
   if (!mdr.get())
     return;
 
+#ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
+  mdr->fromServer = true;
+#endif
+
   if (session) {
     mdr->session = session;
     session->requests.push_back(&mdr->item_session_request);
@@ -1880,8 +1889,11 @@ void Server::dispatch_client_request(MDRequestRef& mdr)
 
   dout(7) << "dispatch_client_request " << *req << dendl;
 
+#ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
+  dout(0) << ADSLTAG_MIGRATION_CORRE_REQUEST << " " << ceph_clock_now() << " Handling request: " << ceph_mds_op_name(req->get_op()) << " on " << req->get_path() << dendl;
   assert((int)mdr->dispatch_timestamps.size() == mdr->retry);
   mdr->dispatch_timestamps.push_back(ceph_clock_now());
+#endif
 
   if (req->may_write()) {
     if (mdcache->is_readonly()) {

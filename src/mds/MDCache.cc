@@ -49,6 +49,9 @@
 #include "common/errno.h"
 #include "common/perf_counters.h"
 #include "common/safe_io.h"
+#ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
+#include "common/Clock.h"
+#endif
 
 #include "osdc/Journaler.h"
 #include "osdc/Filer.h"
@@ -107,6 +110,8 @@ using namespace std;
 
 #include "common/config.h"
 #include "include/assert.h"
+
+#include "adsl/tags.h"
 
 #define dout_context g_ceph_context
 #define dout_subsys ceph_subsys_mds
@@ -12021,7 +12026,16 @@ int MDCache::dump_cache(boost::string_view fn, Formatter *f,
 
 C_MDS_RetryRequest::C_MDS_RetryRequest(MDCache *c, MDRequestRef& r)
   : MDSInternalContext(c->mds), cache(c), mdr(r)
+#ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
+{
+  if (r->fromServer) {
+    MClientRequest *req = mdr->client_request;
+    dout(0) << ADSLTAG_MIGRATION_CORRE_REQUEST << " " << ceph_clock_now() << " Pending request: " << ceph_mds_op_name(req->get_op()) << " on " << req->get_path() << dendl;
+  }
+}
+#else
 {}
+#endif
 
 void C_MDS_RetryRequest::finish(int r)
 {

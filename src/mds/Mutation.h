@@ -26,6 +26,8 @@
 
 #include "common/TrackedOp.h"
 
+#include "adsl/tags.h"
+
 class LogSegment;
 class Capability;
 class CInode;
@@ -214,7 +216,11 @@ struct MDRequestImpl : public MutationImpl {
 
   // indicates how may retries of request have been made
   int retry;
+
+#ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
+  bool fromServer;
   vector<utime_t> dispatch_timestamps;
+#endif
 
   // indicator for vxattr osdmap update
   bool waited_for_osdmap;
@@ -304,6 +310,9 @@ struct MDRequestImpl : public MutationImpl {
     slave_request(NULL), internal_op(params.internal_op), internal_op_finish(NULL),
     internal_op_private(NULL),
     retry(0),
+#ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
+    fromServer(false),
+#endif
     waited_for_osdmap(false), _more(NULL) {
     in[0] = in[1] = NULL;
     if (!params.throttled.is_zero())
