@@ -901,7 +901,7 @@ void Migrator::export_dir(CDir *dir, mds_rank_t dest)
   stat.mut = mdr;
   
   #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << ceph_clock_now() << *dir << " SendExportMsg " << dendl;
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << double(ceph_clock_now()) << " "<< (*dir).get_path()  << " SendExportMsg " << dendl;
   #endif
 
   return mds->mdcache->dispatch_request(mdr);
@@ -984,7 +984,7 @@ void Migrator::dispatch_export_dir(MDRequestRef& mdr, int count)
   }
 
   #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << ceph_clock_now() << *dir << "AcquiredLock " << dendl;
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << double(ceph_clock_now()) << " " << (*dir).get_path() << "AcquiredLock " << dendl;
   #endif
 
   #ifdef MDS_MONITOR_MIGRATOR
@@ -2341,7 +2341,7 @@ void Migrator::export_finish(CDir *dir)
     mds->locker->drop_locks(mut.get());
     mut->cleanup();
   #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << ceph_clock_now() << *dir << " DropLocks " << dendl;
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << double(ceph_clock_now()) << " " << (*dir).get_path()  << " DropLocks " << dendl;
   #endif
   }
   
