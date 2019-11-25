@@ -42,6 +42,9 @@ using std::vector;
 //#define MDS_MONITOR
 
 #include "adsl/tags.h"
+#ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
+#include "adsl/util.h"
+#endif
 
 #define dout_context g_ceph_context
 #define dout_subsys ceph_subsys_mds
@@ -1176,7 +1179,7 @@ void MDBalancer::find_exports(CDir *dir,
       // lucky find?
       if (pop > needmin && pop < needmax) {
         #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-      dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << ceph_clock_now() << *subdir << "ChooseLucky " << " pop: " << pop << dendl;
+      dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " " << dir->get_path() << " ChooseLucky " << " pop: " << pop << dendl;
       #endif
 
       #ifdef MDS_MONITOR
@@ -1223,7 +1226,7 @@ void MDBalancer::find_exports(CDir *dir,
     have += (*it).first;
 
     #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << ceph_clock_now() << *((*it).second) << "ChooseBigSmall " << " pop: " << (*it).first << dendl;
+    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " " << dir->get_path() << " ChooseBigSmall " << " pop: " << (*it).first << dendl;
     #endif
 
     if (have > needmin)
@@ -1255,7 +1258,7 @@ void MDBalancer::find_exports(CDir *dir,
     already_exporting.insert((*it).second);
 
     #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << ceph_clock_now() << *((*it).second) << "ChooseSmallSmall " <<" pop: " << (*it).first << dendl;
+    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " " << dir->get_path() << " ChooseSmallSmall " <<" pop: " << (*it).first << dendl;
     #endif
 
     have += (*it).first;

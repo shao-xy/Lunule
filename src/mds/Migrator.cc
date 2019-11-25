@@ -977,7 +977,7 @@ void Migrator::dispatch_export_dir(MDRequestRef& mdr, int count)
   }
 
   #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " " << dir->get_path() << "AcquiredLock " << dendl;
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " " << dir->get_path() << " AcquiredLock " << dendl;
   #endif
 
   #ifdef MDS_MONITOR_MIGRATOR
