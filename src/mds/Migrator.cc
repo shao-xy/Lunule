@@ -905,6 +905,11 @@ void Migrator::dispatch_export_dir(MDRequestRef& mdr, int count)
   dout(7) << "dispatch_export_dir " << *mdr << dendl;
 
   CDir *dir = mdr->more()->export_dir;
+  
+  #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " " << dir->get_path() << " AcquireStart " << dendl;
+  #endif
+  
   map<CDir*,export_state_t>::iterator it = export_state.find(dir);
   if (it == export_state.end() || it->second.tid != mdr->reqid.tid) {
     // export must have aborted.
