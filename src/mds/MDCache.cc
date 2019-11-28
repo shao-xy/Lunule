@@ -111,6 +111,7 @@ using namespace std;
 #include "adsl/tags.h"
 #ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
 #include "adsl/util.h"
+#include "adsl/mig_co_req.h"
 #endif
 
 #define dout_context g_ceph_context
@@ -12030,7 +12031,7 @@ C_MDS_RetryRequest::C_MDS_RetryRequest(MDCache *c, MDRequestRef& r)
 {
   if (r->fromServer) {
     MClientRequest *req = mdr->client_request;
-    dout(0) << ADSLTAG_MIGRATION_CORRE_REQUEST << " " << now2str() << " Pending request: " << ceph_mds_op_name(req->get_op()) << " on " << req->get_path() << " and " << req->get_path2() << " retried " << r->retry << " times." << dendl;
+    dout(0) << ADSLTAG_MIGRATION_CORRE_REQUEST << " " << get_req_id(r) << " " << now2str() << " Pending request: " << ceph_mds_op_name(req->get_op()) << " on " << get_all_paths(r) << " retried " << r->retry << " times." << dendl;
   }
 }
 #else
