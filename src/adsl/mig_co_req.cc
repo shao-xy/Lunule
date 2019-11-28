@@ -26,3 +26,8 @@ std::string get_all_paths(MDRequestRef& mdr)
 	ss << "paths " << path1 << " " << path2 << " " << path3 << " " << req->get_path() << " " << req->get_path2();
 	return ss.str();
 }
+
+uint64_t get_req_id(MDRequestRef& mdr)
+{
+	return mdr->reqid.tid;
+}
