@@ -894,7 +894,7 @@ void Migrator::export_dir(CDir *dir, mds_rank_t dest)
   stat.mut = mdr;
   
   #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " " << now2str() << " " << dir->get_path() << "." << dir->dirfrag() << " "  << " SendExportMsg " << dendl;
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " " << now2str() << " REQ_ID: " << mdr->reqid << " " << dir->get_path() << "." << dir->dirfrag() << " "  << " SendExportMsg " << dendl;
   #endif
 
   return mds->mdcache->dispatch_request(mdr);
@@ -905,11 +905,6 @@ void Migrator::dispatch_export_dir(MDRequestRef& mdr, int count)
   dout(7) << "dispatch_export_dir " << *mdr << dendl;
 
   CDir *dir = mdr->more()->export_dir;
-  
-  #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " REQ_ID: " << mdr->reqid <<" " << dir->get_path() << "." << dir->dirfrag() << " AcquireStart " << dendl;
-  #endif
-  
   map<CDir*,export_state_t>::iterator it = export_state.find(dir);
   if (it == export_state.end() || it->second.tid != mdr->reqid.tid) {
     // export must have aborted.
@@ -939,7 +934,6 @@ void Migrator::dispatch_export_dir(MDRequestRef& mdr, int count)
 
     mds->locker->drop_locks(mdr.get());
     mdr->drop_local_auth_pins();
-
     mds->wait_for_mdsmap(mds->mdsmap->get_epoch(), new C_M_ExportDirWait(this, mdr, count+1));
     return;
   }
@@ -961,7 +955,10 @@ void Migrator::dispatch_export_dir(MDRequestRef& mdr, int count)
     #endif
     return;
   }
-
+  #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " REQ_ID: " << mdr->reqid <<" " << dir->get_path() << "." << dir->dirfrag() << " AcquireStart " << dendl;
+    #endif
+  
   #ifdef MDS_MONITOR_MIGRATOR
   dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (2) START Lock DIR " << *dir << dendl;
   #endif
@@ -1562,9 +1559,10 @@ void Migrator::export_go(CDir *dir)
   mds->mdlog->wait_for_safe(new C_M_ExportGo(this, dir, it->second.tid));
   mds->mdlog->flush();
 
-  #ifdef MDS_MONITOR_MIGRATOR
-    dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (2) End export go " << dendl;
+  #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " " << now2str() << " " << dir->get_path() << "." << dir->dirfrag() << " Exported " << dendl;
   #endif
+  
 }
 
 void Migrator::export_go_synced(CDir *dir, uint64_t tid)
@@ -1664,9 +1662,9 @@ void Migrator::export_go_synced(CDir *dir, uint64_t tid)
 
   cache->show_subtrees();
 
-  #ifdef MDS_MONITOR_MIGRATOR
-    dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (6) End export_go_synced " << dendl;
-  #endif 
+  #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " " << now2str() << " " << dir->get_path() << "." << dir->dirfrag() << " Export: " << num_exported_inodes << " Export_go_synced " << dendl;
+  #endif
 }
 
 
