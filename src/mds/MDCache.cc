@@ -12030,8 +12030,7 @@ C_MDS_RetryRequest::C_MDS_RetryRequest(MDCache *c, MDRequestRef& r)
 #ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
 {
   if (r->fromServer) {
-    MClientRequest *req = mdr->client_request;
-    dout(0) << ADSLTAG_MIGRATION_CORRE_REQUEST << " " << get_req_id(r) << " " << now2str() << " Pending request: " << ceph_mds_op_name(req->get_op()) << " on " << get_all_paths(r) << " retried " << r->retry << " times." << dendl;
+    r->retry_ts.push_back(ADSL_MDRequestRetryPair(r->last_dispatch, ceph_clock_now()));
   }
 }
 #else

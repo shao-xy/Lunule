@@ -3,6 +3,9 @@
 
 #include <string>
 
-std::string now2str();
+#include "include/utime.h"
+
+std::string adsl_utime2str(utime_t t);
+std::string adsl_now2str();
 
 #endif /* adsl/util.h */

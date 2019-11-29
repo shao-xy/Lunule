@@ -27,6 +27,9 @@
 #include "common/TrackedOp.h"
 
 #include "adsl/tags.h"
+#ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
+#include "adsl/ADSL_MDRequestRetryPair.h"
+#endif
 
 class LogSegment;
 class Capability;
@@ -219,7 +222,8 @@ struct MDRequestImpl : public MutationImpl {
 
 #ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
   bool fromServer;
-  vector<utime_t> dispatch_timestamps;
+  utime_t last_dispatch;
+  vector<ADSL_MDRequestRetryPair> retry_ts;
 #endif
 
   // indicator for vxattr osdmap update
