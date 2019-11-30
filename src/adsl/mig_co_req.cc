@@ -42,7 +42,7 @@ uint64_t adsl_get_req_id(MDRequestRef& mdr)
 	return mdr->reqid.tid;
 }
 
-std::string adsl_get_injected_string(MDRequestRef& mdr)
+std::string adsl_req_get_injected_string(MDRequestRef& mdr)
 {
     assert(mdr->retry == (int)mdr->retry_ts.size());
     MClientRequest * req = mdr->client_request;
