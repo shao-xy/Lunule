@@ -1178,9 +1178,9 @@ void MDBalancer::find_exports(CDir *dir,
 
       // lucky find?
       if (pop > needmin && pop < needmax) {
-        #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-      dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " " << dir->get_path() << " ChooseLucky " << " pop: " << pop << dendl;
-      #endif
+      // #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+      // dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< adsl_now2str() << " " << dir->get_path() << " ChooseLucky " << " pop: " << pop << dendl;
+      // #endif
 
       #ifdef MDS_MONITOR
       dout(7) << " MDS_MONITOR " << __func__ << "(2) Lucky Find DIR " << *subdir << " pop " << pop << 
@@ -1225,9 +1225,9 @@ void MDBalancer::find_exports(CDir *dir,
     already_exporting.insert((*it).second);
     have += (*it).first;
 
-    #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " " << dir->get_path() << " ChooseBigSmall " << " pop: " << (*it).first << dendl;
-    #endif
+    // #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+    // dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< adsl_now2str() << " " << dir->get_path() << " ChooseBigSmall " << " pop: " << (*it).first << dendl;
+    // #endif
 
     if (have > needmin)
       return;
@@ -1257,9 +1257,9 @@ void MDBalancer::find_exports(CDir *dir,
     exports.push_back((*it).second);
     already_exporting.insert((*it).second);
 
-    #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " " << dir->get_path() << " ChooseSmallSmall " <<" pop: " << (*it).first << dendl;
-    #endif
+    // #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+    // dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< adsl_now2str() << " " << dir->get_path() << " ChooseSmallSmall " <<" pop: " << (*it).first << dendl;
+    // #endif
 
     have += (*it).first;
     if (have > needmin)
