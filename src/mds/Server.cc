@@ -1538,7 +1538,7 @@ void Server::reply_client_request(MDRequestRef& mdr, MClientReply *reply)
 #ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
     {
       Mutex::Locker l(adsl_req_mutex);
-      dout(0) << ADSLTAG_MIGRATION_CORRE_REQUEST << ' ' << adsl_req_get_injected_string(mdr, req_count) << dendl;
+      dout(0) << ADSLTAG_MIGRATION_CORRE_REQUEST << ' ' << adsl_req_get_injected_string(mdr, req_count++) << dendl;
     }
 #endif
 
