@@ -74,3 +74,12 @@ std::string adsl_req_get_injected_string(MDRequestRef& mdr, int req_count)
 	ss << adsl_utime2str(ceph_clock_now());				// now it ends
 	return ss.str();
 }
+
+std::string adsl_mig_get_injected_string(string mig_path, string mig_state, int count){
+	std::stringstream ss;
+	ss << " " << adsl_utime2str(ceph_clock_now()) << " " << mig_path << " " << mig_state ;				// now it ends
+	if(count>=0){
+		ss << " " << count;
+	}
+	return ss.str();
+}
