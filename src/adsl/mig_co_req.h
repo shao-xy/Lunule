@@ -13,6 +13,11 @@ extern Mutex adsl_req_mutex;
 std::string adsl_get_all_paths(MDRequestRef& mdr);
 uint64_t adsl_get_req_id(MDRequestRef& mdr);
 
+<<<<<<< Updated upstream
 std::string adsl_req_get_injected_string(MDRequestRef& mdr, int req_count = 0);
 
+=======
+std::string adsl_req_get_injected_string(MDRequestRef& mdr);
+std::string adsl_mig_get_injected_string(MDRequestRef& mdr);
+>>>>>>> Stashed changes
 #endif /* adsl/mig_co_req.h */
