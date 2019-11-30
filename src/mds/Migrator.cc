@@ -894,7 +894,7 @@ void Migrator::export_dir(CDir *dir, mds_rank_t dest)
   stat.mut = mdr;
   
   #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " " << now2str() << " REQ_ID: " << mdr->reqid << " " << dir->get_path() << "." << dir->dirfrag() << " "  << " SendExportMsg " << dendl;
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " " << adsl_now2str() << " REQ_ID: " << mdr->reqid << " " << dir->get_path() << "." << dir->dirfrag() << " "  << " SendExportMsg " << dendl;
   #endif
 
   return mds->mdcache->dispatch_request(mdr);
@@ -913,21 +913,21 @@ void Migrator::dispatch_export_dir(MDRequestRef& mdr, int count)
     return;
   }
   assert(it->second.state == EXPORT_LOCKING);
-
   mds_rank_t dest = it->second.peer;
+
   #ifdef MDS_MONITOR_MIGRATOR
   dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (1) MDR " << *mdr << " export DIR " << *dir << " DEST " << dest << dendl;
   #endif
   if (!mds->is_export_target(dest)) {
     dout(7) << "dest is not yet an export target" << dendl;
     #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " REQ_ID: " << mdr->reqid << " Dest: " << dest << " " << dir->get_path() << "." << dir->dirfrag() << " Cancel-0 " << dendl;
+    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< adsl_now2str() << " REQ_ID: " << mdr->reqid << " Dest: " << dest << " " << dir->get_path() << "." << dir->dirfrag() << " Cancel-0 " << dendl;
     #endif
     if (count > 3) {
       dout(5) << "dest has not been added as export target after three MDSMap epochs, canceling export" << dendl;
       export_try_cancel(dir);
     #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " REQ_ID: " << mdr->reqid <<" " << " " << dir->get_path() << "." << dir->dirfrag() << " Cancel-1 " << dendl;
+    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< adsl_now2str() << " REQ_ID: " << mdr->reqid <<" " << dir->get_path() << "." << dir->dirfrag() << " Cancel-1 " << dendl;
     #endif
       return;
     }
@@ -942,7 +942,7 @@ void Migrator::dispatch_export_dir(MDRequestRef& mdr, int count)
     dout(7) << "waiting for dir to become stable before export: " << *dir << dendl;
     dir->add_waiter(CDir::WAIT_CREATED, new C_M_ExportDirWait(this, mdr, 1));
     #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " REQ_ID: " << mdr->reqid <<" " << " " << dir->get_path() << "." << dir->dirfrag() << " Cancel-2 " << dendl;
+    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< adsl_now2str() << " REQ_ID: " << mdr->reqid <<" " << dir->get_path() << "." << dir->dirfrag() << " Cancel-2 " << dendl;
     #endif
     return;
   }
@@ -951,13 +951,14 @@ void Migrator::dispatch_export_dir(MDRequestRef& mdr, int count)
     dout(7) << "wouldblock|freezing|frozen, canceling export" << dendl;
     export_try_cancel(dir);
     #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " REQ_ID: " << mdr->reqid <<" " << " " << dir->get_path() << "." << dir->dirfrag() << " Cancel-3 " << dendl;
+    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< adsl_now2str() << " REQ_ID: " << mdr->reqid <<" " << dir->get_path() << "." << dir->dirfrag() << " Cancel-3 " << dendl;
     #endif
     return;
   }
+  
   #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " REQ_ID: " << mdr->reqid <<" " << dir->get_path() << "." << dir->dirfrag() << " AcquireStart " << dendl;
-    #endif
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< adsl_now2str() << " REQ_ID: " << mdr->reqid << " " << dir->get_path() << "." << dir->dirfrag() << " Dest: " << dest << " AcquireStart--EXPORT_LOCKING " << dendl;
+  #endif
   
   #ifdef MDS_MONITOR_MIGRATOR
   dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (2) START Lock DIR " << *dir << dendl;
@@ -991,7 +992,7 @@ void Migrator::dispatch_export_dir(MDRequestRef& mdr, int count)
   }
 
   #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< now2str() << " REQ_ID: " << mdr->reqid <<" " << " " << dir->get_path() << "." << dir->dirfrag() << " AcquiredLock " << dendl;
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< adsl_now2str() << " REQ_ID: " << mdr->reqid <<" " << dir->get_path() << "." << dir->dirfrag() << " AcquiredLock--EXPORT_DISCOVERING " << dendl;
   #endif
 
   #ifdef MDS_MONITOR_MIGRATOR
@@ -1294,6 +1295,10 @@ void Migrator::export_frozen(CDir *dir, uint64_t tid)
     prep->add_trace(final_bl);
   }
 
+  #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< adsl_now2str() << " REQ_ID: " <<" " << dir->get_path() << "." << dir->dirfrag() << " EXPORT_PREPPING " << dendl;
+  #endif
+
   // send.
   it->second.state = EXPORT_PREPPING;
   dout(7) << __func__ << " Youxu [5]send prepare message!" << dendl;
@@ -1560,7 +1565,7 @@ void Migrator::export_go(CDir *dir)
   mds->mdlog->flush();
 
   #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " " << now2str() << " " << dir->get_path() << "." << dir->dirfrag() << " Exported " << dendl;
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " " << adsl_now2str() << " " << dir->get_path() << "." << dir->dirfrag() << " Exported " << dendl;
   #endif
   
 }
@@ -1592,6 +1597,10 @@ void Migrator::export_go_synced(CDir *dir, uint64_t tid)
 
   cache->show_subtrees();
   
+  #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< adsl_now2str() << " REQ_ID: " <<" " << dir->get_path() << "." << dir->dirfrag() << " EXPORT_EXPORTPING " << dendl;
+  #endif
+
   it->second.state = EXPORT_EXPORTING;
   assert(g_conf->mds_kill_export_at != 7);
 
@@ -1663,7 +1672,7 @@ void Migrator::export_go_synced(CDir *dir, uint64_t tid)
   cache->show_subtrees();
 
   #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " " << now2str() << " " << dir->get_path() << "." << dir->dirfrag() << " Export: " << num_exported_inodes << " Export_go_synced " << dendl;
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " " << adsl_now2str() << " " << dir->get_path() << "." << dir->dirfrag() << " Export: " << num_exported_inodes << " Export_go_synced " << dendl;
   #endif
 }
 
@@ -1984,6 +1993,10 @@ void Migrator::handle_export_ack(MExportDirAck *m)
   bufferlist::iterator bp = m->imported_caps.begin();
   ::decode(it->second.peer_imported, bp);
 
+  #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< adsl_now2str() << " REQ_ID: " <<" " << dir->get_path() << "." << dir->dirfrag() << " EXPORT_LOGGINGFINISH " << dendl;
+  #endif
+
   it->second.state = EXPORT_LOGGINGFINISH;
   assert (g_conf->mds_kill_export_at != 9);
   set<CDir*> bounds;
@@ -2019,7 +2032,9 @@ void Migrator::handle_export_ack(MExportDirAck *m)
   mds->mdlog->submit_entry(le, new C_MDS_ExportFinishLogged(this, dir));
   mds->mdlog->flush();
   assert (g_conf->mds_kill_export_at != 10);
-  
+  #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " "<< adsl_now2str() << " REQ_ID: " <<" " << dir->get_path() << "." << dir->dirfrag() << " EXPORT_LOGGFLUSHED " << dendl;
+  #endif
   m->put();
   
   #ifdef MDS_MONITOR_MIGRATOR
@@ -2349,7 +2364,7 @@ void Migrator::export_finish(CDir *dir)
     mds->locker->drop_locks(mut.get());
     mut->cleanup();
   #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " " << now2str() << " " << dir->get_path() << "." << dir->dirfrag() << " DropLocks " << dendl;
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << " " << adsl_now2str() << " " << dir->get_path() << "." << dir->dirfrag() << " DropLocks " << dendl;
   #endif
   }
   

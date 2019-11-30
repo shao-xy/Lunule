@@ -11,8 +11,11 @@
 std::string adsl_get_all_paths(MDRequestRef& mdr)
 {
 	MClientRequest * req = mdr->client_request;
-	std::vector<std::string> paths;
-	paths[0] = paths[1] = paths[2] = "";
+	//std::vector<std::string> paths;
+	std::string paths[5];
+	paths[0] = "";
+	paths[1] = "";
+	paths[2] = "";
 	paths[3] = req->get_path();
 	paths[4] = req->get_path2();
 	if (mdr->in[0]) {
@@ -28,11 +31,17 @@ std::string adsl_get_all_paths(MDRequestRef& mdr)
 	std::stringstream ss;
 	ss << "paths";
 	// Check if empty string and output
-	for (std::vector<std::string>::iterator it = paths.begin(); it != paths.end(); it++) {
-		if (*it == "") {
-			*it = "*";
+	//for (std::vector<std::string>::iterator it = paths.begin(); it != paths.end(); it++) {
+	//	if (*it == "") {
+	//		*it = "*";
+	//	}
+	//	ss << ' ' << *it;
+	//}
+	for (int i = 0; i < 5; i++) {
+		if (paths[i] == "") {
+			paths[i] = "*";
 		}
-		ss << ' ' << *it;
+		ss << ' ' << paths[i];
 	}
 	return ss.str();
 }
