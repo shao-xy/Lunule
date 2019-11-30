@@ -1525,6 +1525,9 @@ void Server::reply_client_request(MDRequestRef& mdr, MClientReply *reply)
   entity_inst_t client_inst = req->get_source_inst();
   int dentry_wanted = req->get_dentry_wanted();
 
+#ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
+  static int req_count = 0;
+#endif
   if (!did_early_reply && !is_replay) {
 
     mds->logger->inc(l_mds_reply);
@@ -1533,7 +1536,10 @@ void Server::reply_client_request(MDRequestRef& mdr, MClientReply *reply)
     dout(20) << "lat " << lat << dendl;
 
 #ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
-    dout(0) << ADSLTAG_MIGRATION_CORRE_REQUEST << ' ' << adsl_get_injected_string(mdr) << dendl;
+    {
+      Mutex::Locker l(adsl_req_mutex);
+      dout(0) << ADSLTAG_MIGRATION_CORRE_REQUEST << ' ' << adsl_req_get_injected_string(mdr, req_count) << dendl;
+    }
 #endif
 
     

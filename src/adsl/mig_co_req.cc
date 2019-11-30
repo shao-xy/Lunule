@@ -8,6 +8,8 @@
 
 #include "messages/MClientRequest.h"
 
+Mutex adsl_req_mutex("adsl_req_mutex");
+
 std::string adsl_get_all_paths(MDRequestRef& mdr)
 {
 	MClientRequest * req = mdr->client_request;
@@ -51,13 +53,14 @@ uint64_t adsl_get_req_id(MDRequestRef& mdr)
 	return mdr->reqid.tid;
 }
 
-std::string adsl_req_get_injected_string(MDRequestRef& mdr)
+std::string adsl_req_get_injected_string(MDRequestRef& mdr, int req_count)
 {
+	assert(adsl_req_mutex.is_locked_by_me());
     assert(mdr->retry == (int)mdr->retry_ts.size());
     MClientRequest * req = mdr->client_request;
 
 	std::stringstream ss;
-	ss << adsl_get_req_id(mdr) << ' '					// request id
+	ss << req_count << ' '								// request id
 	   << ceph_mds_op_name(req->get_op()) << ' '		// operation
 	   << adsl_get_all_paths(mdr) << ' '				// paths
 	   << mdr->retry << ' '								// retry times
