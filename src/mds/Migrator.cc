@@ -1599,7 +1599,7 @@ void Migrator::export_go_synced(CDir *dir, uint64_t tid)
   cache->show_subtrees();
   
   #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << adsl_mig_get_injected_string(dir->get_path(), "EXPORT_EXPORTPING") << dendl;
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << adsl_mig_get_injected_string(dir->get_path(), "EXPORT_EXPORTING") << dendl;
   #endif
 
   it->second.state = EXPORT_EXPORTING;
