@@ -854,6 +854,11 @@ void Migrator::export_dir(CDir *dir, mds_rank_t dest)
     return;
   }
 
+  export_state_t& stat = export_state[dir];
+  #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << adsl_mig_get_injected_string(dir->get_path(), stat.tid, "SendExportMsg") << dendl;
+  #endif
+
   if (g_conf->mds_thrash_exports) {
     // create random subtree bound (which will not be exported)
     list<CDir*> ls;
@@ -889,15 +894,12 @@ void Migrator::export_dir(CDir *dir, mds_rank_t dest)
   mdr->more()->export_dir = dir;
 
   assert(export_state.count(dir) == 0);
-  export_state_t& stat = export_state[dir];
+  // Yiduo: Adjust pos of next linx
+  //export_state_t& stat = export_state[dir];
   stat.state = EXPORT_LOCKING;
   stat.peer = dest;
   stat.tid = mdr->reqid.tid;
   stat.mut = mdr;
-  
-  #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << adsl_mig_get_injected_string(dir->get_path(), stat.tid, "SendExportMsg") << dendl;
-  #endif
 
   return mds->mdcache->dispatch_request(mdr);
 }
