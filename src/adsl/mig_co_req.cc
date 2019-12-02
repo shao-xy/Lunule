@@ -60,7 +60,8 @@ std::string adsl_req_get_injected_string(MDRequestRef& mdr, int req_count)
     MClientRequest * req = mdr->client_request;
 
 	std::stringstream ss;
-	ss << req_count << ' '								// request id
+	ss << req_count << ' '								// request count
+	   << adsl_get_req_id(mdr) << ' '					// request id
 	   << ceph_mds_op_name(req->get_op()) << ' '		// operation
 	   << adsl_get_all_paths(mdr) << ' '				// paths
 	   << mdr->retry << ' '								// retry times
