@@ -274,6 +274,7 @@ void Migrator::export_try_cancel(CDir *dir, bool notify_peer)
   assert(it != export_state.end());
 
   int state = it->second.state;
+  uint64_t adsl_temp_tid = it->second.tid;
   switch (state) {
   case EXPORT_LOCKING:
     dout(10) << "export state=locking : dropping locks and removing auth_pin" << dendl;
@@ -388,7 +389,9 @@ void Migrator::export_try_cancel(CDir *dir, bool notify_peer)
     }
 
     cache->show_subtrees();
-
+    #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << adsl_mig_get_injected_string(dir->get_path(), adsl_temp_tid,"Canceled") << dendl;
+    #endif
     maybe_do_queued_export();
   }
 }
