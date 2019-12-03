@@ -389,11 +389,11 @@ void Migrator::export_try_cancel(CDir *dir, bool notify_peer)
     }
 
     cache->show_subtrees();
-    #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << adsl_mig_get_injected_string(dir->get_path(), adsl_temp_tid,"Canceled") << dendl;
-    #endif
     maybe_do_queued_export();
   }
+  #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+  dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << adsl_mig_get_injected_string(dir->get_path(), adsl_temp_tid,"Canceled") << dendl;
+  #endif
 }
 
 void Migrator::export_cancel_finish(CDir *dir)
@@ -925,9 +925,6 @@ void Migrator::dispatch_export_dir(MDRequestRef& mdr, int count)
   #endif
   if (!mds->is_export_target(dest)) {
     dout(7) << "dest is not yet an export target" << dendl;
-    #ifdef ADSLTAG_BREAKDOWN_MIGRATION
-    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << adsl_mig_get_injected_string(dir->get_path(), mdr->reqid.tid, "Cancel-0") << dendl;
-    #endif
     if (count > 3) {
       dout(5) << "dest has not been added as export target after three MDSMap epochs, canceling export" << dendl;
       export_try_cancel(dir);
@@ -940,6 +937,9 @@ void Migrator::dispatch_export_dir(MDRequestRef& mdr, int count)
     mds->locker->drop_locks(mdr.get());
     mdr->drop_local_auth_pins();
     mds->wait_for_mdsmap(mds->mdsmap->get_epoch(), new C_M_ExportDirWait(this, mdr, count+1));
+    #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+    dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << adsl_mig_get_injected_string(dir->get_path(), mdr->reqid.tid, "Cancel-0") << dendl;
+    #endif
     return;
   }
 
