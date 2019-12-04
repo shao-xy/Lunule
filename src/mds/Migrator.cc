@@ -1037,7 +1037,12 @@ void Migrator::dispatch_export_dir(MDRequestRef& mdr, int count)
  */
 void Migrator::handle_export_discover_ack(MExportDirDiscoverAck *m)
 {
+  
+  
   CDir *dir = cache->get_dirfrag(m->get_dirfrag());
+  #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+      dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << adsl_mig_get_injected_string(dir->get_path(), m->get_tid(),"DISCOVER_ACK_RECEIVED") << dendl;
+  #endif
   mds_rank_t dest(m->get_source().num());
   utime_t now = ceph_clock_now();
   assert(dir);
@@ -1072,7 +1077,9 @@ void Migrator::handle_export_discover_ack(MExportDirDiscoverAck *m)
       it->second.state = EXPORT_FREEZING;
       dir->auth_unpin(this);
       assert(g_conf->mds_kill_export_at != 3);
-
+      #ifdef ADSLTAG_BREAKDOWN_MIGRATION
+      dout(0) << ADSLTAG_BREAKDOWN_MIGRATION << adsl_mig_get_injected_string(dir->get_path(), mdr->reqid.tid,"DISCOVER_ACK_FREEZING") << dendl;
+      #endif
     } else {
       dout(7) << "peer failed to discover (not active?), canceling" << dendl;
       export_try_cancel(dir, false);
