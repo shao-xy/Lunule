@@ -12030,7 +12030,9 @@ C_MDS_RetryRequest::C_MDS_RetryRequest(MDCache *c, MDRequestRef& r)
 #ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
 {
   if (r->fromServer) {
-    r->retry_ts.push_back(ADSL_MDRequestRetryPair(r->last_dispatch, ceph_clock_now()));
+    ADSL_MDRequestRetryPair retry_info(r->last_dispatch, ceph_clock_now());
+    retry_info.mig_dirfrag_num = adsl_check_inode_migration(mdr->in[0], c->migrator.get());
+    r->retry_ts.push_back(retry_info);
   }
 }
 #else

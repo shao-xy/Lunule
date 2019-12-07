@@ -7,6 +7,8 @@ struct ADSL_MDRequestRetryPair {
 	utime_t start;
 	utime_t pend;
 
+	int mig_dirfrag_num;
+
 	ADSL_MDRequestRetryPair(utime_t start, utime_t pend) :
 		start(start), pend(pend) {}
 };

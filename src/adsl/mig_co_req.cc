@@ -5,6 +5,7 @@
 #include "mig_co_req.h"
 
 #include "mds/CInode.h"
+#include "mds/Migrator.h"
 
 #include "messages/MClientRequest.h"
 
@@ -53,11 +54,27 @@ uint64_t adsl_get_req_id(MDRequestRef& mdr)
 	return mdr->reqid.tid;
 }
 
+int adsl_check_inode_migration(CInode * inode, Migrator * migrator)
+{
+	if (!inode || !migrator)	return -1;
+
+	if (!inode->has_dirfrags())	return 0;
+	std::list<CDir*> dirfrags;
+	inode->get_dirfrags(dirfrags);
+
+	assert(dirfrags.size() > 0); // in that inode->has_dirfrags() returns true
+	int count = 0;
+	for (CDir * dir : dirfrags) {
+		if (migrator->is_exporting(dir))	count++;
+	}
+	return count;
+}
+
 std::string adsl_req_get_injected_string(MDRequestRef& mdr, int req_count)
 {
 	assert(adsl_req_mutex.is_locked_by_me());
-    assert(mdr->retry == (int)mdr->retry_ts.size());
-    MClientRequest * req = mdr->client_request;
+	assert(mdr->retry == (int)mdr->retry_ts.size());
+	MClientRequest * req = mdr->client_request;
 
 	std::stringstream ss;
 	ss << req_count << ' '								// request count
@@ -69,7 +86,8 @@ std::string adsl_req_get_injected_string(MDRequestRef& mdr, int req_count)
 	for (vector<ADSL_MDRequestRetryPair>::iterator it = mdr->retry_ts.begin();
 		it != mdr->retry_ts.end(); it++) {
 		ss << adsl_utime2str(it->start) << ' '
-		   << adsl_utime2str(it->pend) << ' ';
+		   << adsl_utime2str(it->pend) << ' '
+		   << it->mig_dirfrag_num << ' ';
 	} // retry pairs
 	ss << adsl_utime2str(mdr->last_dispatch) << ' ';	// last dispatch
 	ss << adsl_utime2str(ceph_clock_now());				// now it ends
