@@ -76,7 +76,9 @@ std::string adsl_req_get_injected_string(MDRequestRef& mdr, int req_count)
 std::string adsl_req_get_injected_string(MDRequestRef& mdr)
 #endif
 {
+#ifdef ADSLTAG_REQUEST_MANUALCNT
 	assert(adsl_req_mutex.is_locked_by_me());
+#endif
 	assert(mdr->retry == (int)mdr->retry_ts.size());
 	MClientRequest * req = mdr->client_request;
 
