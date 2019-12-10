@@ -70,14 +70,21 @@ int adsl_check_inode_migration(CInode * inode, Migrator * migrator)
 	return count;
 }
 
+#ifdef ADSLTAG_REQUEST_MANUALCNT
 std::string adsl_req_get_injected_string(MDRequestRef& mdr, int req_count)
+#else
+std::string adsl_req_get_injected_string(MDRequestRef& mdr)
+#endif
 {
 	assert(adsl_req_mutex.is_locked_by_me());
 	assert(mdr->retry == (int)mdr->retry_ts.size());
 	MClientRequest * req = mdr->client_request;
 
 	std::stringstream ss;
-	ss << req_count << ' '								// request count
+	ss 
+#ifdef ADSLTAG_REQUEST_MANUALCNT
+	   << req_count << ' '								// request count
+#endif
 	   << adsl_get_req_id(mdr) << ' '					// request id
 	   << ceph_mds_op_name(req->get_op()) << ' '		// operation
 	   << adsl_get_all_paths(mdr) << ' '				// paths

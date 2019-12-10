@@ -18,6 +18,10 @@ class CInode;
 class Migrator;
 int adsl_check_inode_migration(CInode * inode, Migrator * migrator);
 
+#ifdef ADSLTAG_REQUEST_MANUALCNT
 std::string adsl_req_get_injected_string(MDRequestRef& mdr, int req_count = 0);
+#else
+std::string adsl_req_get_injected_string(MDRequestRef& mdr);
+#endif
 std::string adsl_mig_get_injected_string(string mig_path, uint64_t req_id, string mig_state, int count = -1);
 #endif /* adsl/mig_co_req.h */
