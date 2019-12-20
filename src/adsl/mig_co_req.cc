@@ -90,8 +90,17 @@ std::string adsl_req_get_injected_string(MDRequestRef& mdr)
 	   << adsl_get_req_id(mdr) << ' '					// request id
 	   << ceph_mds_op_name(req->get_op()) << ' '		// operation
 	   << adsl_get_all_paths(mdr) << ' '				// paths
+#ifdef ADSLTAG_QUEUEING_OBSERVER 
+	   << req->migs_in_queue << ' '						// Queueing migration messages
+	   << req->other_in_queue << ' '					// Queueing other items
+#endif
 	   << mdr->retry << ' '								// retry times
+#ifdef ADSLTAG_QUEUEING_OBSERVER 
+	   << adsl_utime2str(req->get_recv_stamp()) << ' '	// arrival
+	   << adsl_utime2str(req->get_dispatch_stamp()) << ' '; // dispatch in message queue
+#else
 	   << adsl_utime2str(req->get_recv_stamp()) << ' ';	// arrival
+#endif
 	for (vector<ADSL_MDRequestRetryPair>::iterator it = mdr->retry_ts.begin();
 		it != mdr->retry_ts.end(); it++) {
 		ss << adsl_utime2str(it->start) << ' '

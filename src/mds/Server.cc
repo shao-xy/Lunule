@@ -70,6 +70,7 @@ using namespace std;
 #include "MDMonitor.h"
 #endif
 
+#include "adsl/tags.h"
 #ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
 #include "adsl/util.h"
 #include "adsl/mig_co_req.h"

@@ -462,6 +462,7 @@ set(libcommon_files
   mgr/MgrClient.cc
   msg/simple/Accepter.cc
   msg/DispatchQueue.cc
+  adsl/DispatchQueuePatch.cc
   msg/Message.cc
   mon/PGMap.cc
   mgr/ServiceMap.cc

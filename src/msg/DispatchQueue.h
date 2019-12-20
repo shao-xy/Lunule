@@ -25,6 +25,11 @@
 #include "common/Thread.h"
 #include "common/PrioritizedQueue.h"
 
+#include "adsl/tags.h"
+#ifdef ADSLTAG_QUEUEING_OBSERVER
+#include "messages/MClientRequest.h"
+#endif
+
 class CephContext;
 class Messenger;
 class Message;
@@ -228,6 +233,18 @@ class DispatchQueue {
     assert(marrival.empty());
     assert(local_messages.empty());
   }
+#ifdef ADSLTAG_QUEUEING_OBSERVER
+  struct QueueingCounter {
+    int migs;		// Migration messages
+    int other;		// Other messages
+    int conns;		// Connections
+    int ignored;	// NULL pointer to messages
+  };
+  // implemented in adsl/DispatchQueuePatch.cc
+  static int check_migration(QueueItem & item, void * arg);
+  std::string adsl_get_queueing_observer_string(Message * m);
+  void clientreqs_observe_queueing(MClientRequest * m);
+#endif
 };
 
 #endif

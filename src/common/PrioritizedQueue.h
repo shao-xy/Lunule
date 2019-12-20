@@ -18,6 +18,8 @@
 #include "common/Formatter.h"
 #include "common/OpQueue.h"
 
+#include "adsl/tags.h"
+
 /**
  * Manages queue for normal and strict priority items
  *
@@ -156,6 +158,28 @@ class PrioritizedQueue : public OpQueue <T, K> {
 	f->dump_int("first_item_cost", front().first);
       }
     }
+#ifdef ADSLTAG_QUEUEING_OBSERVER
+    int traverse(int (*fp)(T&, void*), void * arg, int * pcount) {
+      int failed_count = 0;
+      for (typename Classes::iterator it = q.begin();
+           it != q.end();
+           it++) {
+        ListPairs & lp = it->second;
+        for (typename ListPairs::iterator lpit = lp.begin();
+             lpit != lp.end();
+             lpit++) {
+          int ret = fp(lpit->second, arg);
+          if (ret) {
+            failed_count++;
+          }
+          else {
+            (*pcount)++;
+          }
+        }
+      }
+      return failed_count;
+    }
+#endif
   };
 
   typedef std::map<unsigned, SubQueue> SubQueues;
@@ -339,6 +363,25 @@ public:
     }
     f->close_section();
   }
+
+#ifdef ADSLTAG_QUEUEING_OBSERVER
+  int traverse(int (*fp)(T&, void *), void * arg) {
+    int count = 0;
+    for (typename SubQueues::iterator i = queue.begin();
+         i != queue.end();
+         ++i) {
+      assert(i->second.length()); 
+      i->second.traverse(fp, arg, &count);
+    }
+    for (typename SubQueues::iterator i = high_queue.begin();
+         i != high_queue.end();
+         ++i) {
+      assert(i->second.length());
+      i->second.traverse(fp, arg, &count);
+    }
+    return count;
+  }
+#endif
 };
 
 #endif

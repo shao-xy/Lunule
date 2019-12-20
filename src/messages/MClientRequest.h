@@ -276,6 +276,11 @@ public:
 	<< ")";
   }
 
+public:
+#ifdef ADSLTAG_QUEUEING_OBSERVER
+  int migs_in_queue;
+  int other_in_queue;
+#endif
 };
 
 WRITE_CLASS_ENCODER(MClientRequest::Release)

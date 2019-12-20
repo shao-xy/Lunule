@@ -20,6 +20,7 @@
 #define dout_subsys ceph_subsys_ms
 #include "common/debug.h"
 
+#include "adsl/tags.h"
 
 /*******************
  * DispatchQueue
@@ -82,6 +83,12 @@ void DispatchQueue::enqueue(Message *m, int priority, uint64_t id)
 
   Mutex::Locker l(lock);
   ldout(cct,20) << "queue " << m << " prio " << priority << dendl;
+#ifdef ADSLTAG_QUEUEING_OBSERVER
+  //ldout(cct, 0) << ADSLTAG_QUEUEING_OBSERVER << adsl_get_queueing_observer_string(m) << dendl;
+  if (m->get_type() == CEPH_MSG_CLIENT_REQUEST) {
+    clientreqs_observe_queueing(static_cast<MClientRequest*>(m));
+  }
+#endif
   add_arrival(m);
   if (priority >= CEPH_MSG_PRIO_LOW) {
     mqueue.enqueue_strict(
