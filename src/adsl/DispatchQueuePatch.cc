@@ -65,7 +65,8 @@ void DispatchQueue::clientreqs_observe_queueing(MClientRequest * m)
 	int total = mqueue.length();
 	ldout(cct, 0) << ADSLTAG_QUEUEING_OBSERVER << "Checked " << checked << " out of " << total << dendl;
 #ifdef ADSLTAG_QUEUEING_OBSERVER_SHOW_OTHER 
-	ldout(cct, 0) << ADSLTAG_QUEUEING_OBSERVER_SHOW_OTHER << "Other messsages: " << qc.onames.str() << dendl;
+	if (checked)
+		ldout(cct, 0) << ADSLTAG_QUEUEING_OBSERVER_SHOW_OTHER << "Other messsages: " << qc.onames.str() << dendl;
 #endif
 
 	m->migs_in_queue = qc.migs;
