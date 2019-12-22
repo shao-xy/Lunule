@@ -27,6 +27,7 @@
 
 #include "adsl/tags.h"
 #ifdef ADSLTAG_QUEUEING_OBSERVER
+#include <ostream>
 #include "messages/MClientRequest.h"
 #endif
 
@@ -239,6 +240,8 @@ class DispatchQueue {
     int other;		// Other messages
     int conns;		// Connections
     int ignored;	// NULL pointer to messages
+    std::stringstream onames; // Names of other messages
+    QueueingCounter() : migs(0), other(0), conns(0), ignored(0) {}
   };
   // implemented in adsl/DispatchQueuePatch.cc
   static int check_migration(QueueItem & item, void * arg);

@@ -46,6 +46,7 @@ int DispatchQueue::check_migration(QueueItem & item, void * arg)
 			}
 			else {
 				qc->other++;
+				qc->onames << m->get_type_name() << ' ';
 			}
 		}
 	}
@@ -58,12 +59,14 @@ void DispatchQueue::clientreqs_observe_queueing(MClientRequest * m)
 	assert(lock.is_locked_by_me());
 
 	QueueingCounter qc;
-	memset(&qc, 0, sizeof(qc));
 
 	// Count
 	int checked = mqueue.traverse(check_migration, &qc);
 	int total = mqueue.length();
 	ldout(cct, 0) << ADSLTAG_QUEUEING_OBSERVER << "Checked " << checked << " out of " << total << dendl;
+#ifdef ADSLTAG_QUEUEING_OBSERVER_SHOW_OTHER 
+	ldout(cct, 0) << ADSLTAG_QUEUEING_OBSERVER_SHOW_OTHER << "Other messsages: " << qc.onames.str() << dendl;
+#endif
 
 	m->migs_in_queue = qc.migs;
 	m->other_in_queue = qc.other + qc.conns;
