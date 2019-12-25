@@ -109,6 +109,9 @@ std::string adsl_req_get_injected_string(MDRequestRef& mdr)
 	} // retry pairs
 	ss << adsl_utime2str(mdr->last_dispatch) << ' ';	// last dispatch
 	ss << adsl_utime2str(ceph_clock_now());				// now it ends
+#ifdef ADSLTAG_QUEUEING_OBSERVER_SHOW_BLM
+	ss << ' ' << req->bm_names;
+#endif
 	return ss.str();
 }
 

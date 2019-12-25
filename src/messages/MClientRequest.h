@@ -280,6 +280,7 @@ public:
 #ifdef ADSLTAG_QUEUEING_OBSERVER
   int migs_in_queue;
   int other_in_queue;
+  std::string bm_names;	// names of blocking messages
 #endif
 };
 

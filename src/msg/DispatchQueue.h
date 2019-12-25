@@ -239,8 +239,10 @@ class DispatchQueue {
     int migs;		// Migration messages
     int other;		// Other messages
     int conns;		// Connections
-    int ignored;	// NULL pointer to messages
-    std::stringstream onames; // Names of other messages
+    int ignored;	// NULL pointers to messages
+#ifdef ADSLTAG_QUEUEING_OBSERVER_SHOW_BLM
+    std::stringstream mnames; // Names of blocking messages
+#endif
     QueueingCounter() : migs(0), other(0), conns(0), ignored(0) {}
   };
   // implemented in adsl/DispatchQueuePatch.cc
