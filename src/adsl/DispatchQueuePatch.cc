@@ -10,6 +10,9 @@
 #ifdef ADSLTAG_QUEUEING_OBSERVER
 #include "mds/mdstypes.h"
 #endif
+#ifdef ADSLTAG_QUEUEING_SHOWSEQ 
+#include "util.h"
+#endif
 
 /*******************
  * DispatchQueue
@@ -72,5 +75,12 @@ void DispatchQueue::clientreqs_observe_queueing(MClientRequest * m)
 #ifdef ADSLTAG_QUEUEING_OBSERVER_SHOW_BLM
 	m->bm_names = qc.mnames.str();
 #endif
+}
+#endif
+
+#ifdef ADSLTAG_QUEUEING_SHOWSEQ 
+void DispatchQueue::adsl_msg_show_dispatch(Message * m)
+{
+	ldout(cct, 0) << ADSLTAG_QUEUEING_SHOWSEQ << m->get_type_name() << ' ' << adsl_utime2str(m->get_dispatch_stamp()) << ' ' << adsl_now2str() << dendl;
 }
 #endif

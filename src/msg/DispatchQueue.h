@@ -250,6 +250,9 @@ class DispatchQueue {
   std::string adsl_get_queueing_observer_string(Message * m);
   void clientreqs_observe_queueing(MClientRequest * m);
 #endif
+#ifdef ADSLTAG_QUEUEING_SHOWSEQ 
+  void adsl_msg_show_dispatch(Message * m);
+#endif
 };
 
 #endif

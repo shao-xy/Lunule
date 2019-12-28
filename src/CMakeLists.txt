@@ -463,6 +463,7 @@ set(libcommon_files
   msg/simple/Accepter.cc
   msg/DispatchQueue.cc
   adsl/DispatchQueuePatch.cc
+  adsl/util.cc
   msg/Message.cc
   mon/PGMap.cc
   mgr/ServiceMap.cc

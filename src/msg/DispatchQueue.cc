@@ -202,6 +202,9 @@ void DispatchQueue::entry()
 	} else {
 	  uint64_t msize = pre_dispatch(m);
 	  msgr->ms_deliver_dispatch(m);
+#ifdef ADSLTAG_QUEUEING_SHOWSEQ 
+	  adsl_msg_show_dispatch(m);
+#endif
 	  post_dispatch(m, msize);
 	}
       }

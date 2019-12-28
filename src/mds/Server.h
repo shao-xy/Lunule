@@ -21,7 +21,7 @@
 #include "Mutation.h"
 
 // New module to monitor MDS IOPS - from Youxu
-#define MDS_MONITOR
+// #define MDS_MONITOR
 // #define MDS_MONITOR_LAT
 
 class OSDMap;
