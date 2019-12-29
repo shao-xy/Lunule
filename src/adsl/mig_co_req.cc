@@ -95,7 +95,7 @@ std::string adsl_req_get_injected_string(MDRequestRef& mdr)
 	   << req->other_in_queue << ' '					// Queueing other items
 #endif
 	   << mdr->retry << ' '								// retry times
-#ifdef ADSLTAG_QUEUEING_OBSERVER 
+#if (defined ADSLTAG_QUEUEING_OBSERVER) || (defined ADSLTAG_QUEUEING_SHOWSEQ)
 	   << adsl_utime2str(req->get_recv_stamp()) << ' '	// arrival
 	   << adsl_utime2str(req->get_dispatch_stamp()) << ' '; // dispatch in message queue
 #else
