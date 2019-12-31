@@ -81,6 +81,6 @@ void DispatchQueue::clientreqs_observe_queueing(MClientRequest * m)
 #ifdef ADSLTAG_QUEUEING_SHOWSEQ 
 void DispatchQueue::adsl_msg_show_dispatch(Message * m)
 {
-	//ldout(cct, 0) << ADSLTAG_QUEUEING_SHOWSEQ << m->get_type_name() << ' ' << adsl_utime2str(m->get_dispatch_stamp()) << ' ' << adsl_now2str() << dendl;
+	ldout(cct, 0) << ADSLTAG_QUEUEING_SHOWSEQ << m->get_type_name() << ' ' << adsl_utime2str(m->get_dispatch_stamp()) << ' ' << adsl_now2str() << dendl;
 }
 #endif
