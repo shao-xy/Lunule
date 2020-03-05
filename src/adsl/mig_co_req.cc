@@ -79,7 +79,9 @@ std::string adsl_req_get_injected_string(MDRequestRef& mdr)
 #ifdef ADSLTAG_REQUEST_MANUALCNT
 	assert(adsl_req_mutex.is_locked_by_me());
 #endif
+#ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
 	assert(mdr->retry == (int)mdr->retry_ts.size());
+#endif
 	MClientRequest * req = mdr->client_request;
 
 	std::stringstream ss;
@@ -101,6 +103,7 @@ std::string adsl_req_get_injected_string(MDRequestRef& mdr)
 #else
 	   << adsl_utime2str(req->get_recv_stamp()) << ' ';	// arrival
 #endif
+#ifdef ADSLTAG_MIGRATION_CORRE_REQUEST
 	for (vector<ADSL_MDRequestRetryPair>::iterator it = mdr->retry_ts.begin();
 		it != mdr->retry_ts.end(); it++) {
 		ss << adsl_utime2str(it->start) << ' '
@@ -109,6 +112,7 @@ std::string adsl_req_get_injected_string(MDRequestRef& mdr)
 	} // retry pairs
 	ss << adsl_utime2str(mdr->last_dispatch) << ' ';	// last dispatch
 	ss << adsl_utime2str(ceph_clock_now());				// now it ends
+#endif
 #ifdef ADSLTAG_QUEUEING_OBSERVER_SHOW_BLM
 	ss << ' ' << req->bm_names;
 #endif
