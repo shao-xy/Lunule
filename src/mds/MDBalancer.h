@@ -103,6 +103,14 @@ private:
                     mds_rank_t dest,
                     int descend_depth);
   #endif
+
+  void find_exports_hothash(CDir *dir,
+                    double amount,
+                    list<CDir*>& exports,
+                    double& have,
+                    set<CDir*>& already_exporting,
+                    mds_rank_t dest);
+
   void find_exports(CDir *dir,
                     double amount,
                     list<CDir*>& exports,

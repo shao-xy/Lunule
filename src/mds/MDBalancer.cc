@@ -942,26 +942,30 @@ void MDBalancer::try_rebalance(balance_state_t& state)
 	 ++pot) {
       if ((*pot)->get_inode()->is_stray()) continue;
 
-      /*
       //------old code of cold start-------
-      #ifdef BASECODE_CLEAN_STATE
-      find_exports_coldfirst(*pot, amount, exports, have, already_exporting, target, 5);
-      #endif
-      #ifndef BASECODE_CLEAN_STATE
+
+      #ifndef HOT_HASH
       find_exports(*pot, amount, exports, have, already_exporting);
       #endif
 
-      #ifdef BASECODE_CLEAN_STATE
-      dout(1) << " MDS_COLD " << __func__ << " 1: start to coldfirst migration " <<dendl;
-      break;
+      #ifdef HOT_HASH
+      find_exports_hothash(*pot, amount, exports, have, already_exporting, target);
+      //find_exports(*pot, amount, exports, have, already_exporting);
       #endif
 
-      #ifndef BASECODE_CLEAN_STATE
+      #ifdef HOT_HASH
       if (have > amount-MIN_OFFLOAD){
-        dout(1) << " MDS_COLD " << __func__ << " 2: start to coldfirst migration " <<dendl;
+        dout(1) << " MDS_COLD " << __func__ << " 2: start to HOT_HASH migration " <<dendl;
         break;
       }
-      #endif*/
+      #endif
+
+      #ifndef HOT_HASH
+      if (have > amount-MIN_OFFLOAD){
+        dout(1) << " MDS_COLD " << __func__ << " 2: start to ORIGINAL migration " <<dendl;
+        break;
+      }
+      #endif
     }
     //fudge = amount - have;
 
@@ -981,17 +985,15 @@ void MDBalancer::try_rebalance(balance_state_t& state)
   mds->mdcache->show_subtrees();
 }
 
-#ifdef MDS_COLDFIRST_BALANCER
-
-void MDBalancer::find_exports_coldfirst(CDir *dir,
+#ifdef HOT_HASH
+void MDBalancer::find_exports_hothash(CDir *dir,
                               double amount,
                               list<CDir*>& exports,
                               double& have,
-                              set<CDir*>& already_exporting, 
-                              mds_rank_t dest,
-                              int descend_depth)
+                              set<CDir*>& already_exporting,
+                              mds_rank_t dest)
 {
-  int cluster_size = mds->get_mds_map()->get_num_in_mds();
+  dout(0) << " [WAN]: old export was happen " << dendl;
   double need = amount - have;
   if (need < amount * g_conf->mds_bal_min_start)
     return;   // good enough!
@@ -999,25 +1001,28 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
   double needmin = need * g_conf->mds_bal_need_min;
   double midchunk = need * g_conf->mds_bal_midchunk;
   double minchunk = need * g_conf->mds_bal_minchunk;
+  
+  int cluster_size = mds->get_mds_map()->get_num_in_mds();
+
+  //need in our hash function
+  //double my_needmin = (amount - have)/cluster_size + needmin;
 
   list<CDir*> bigger_rep, bigger_unrep;
   multimap<double, CDir*> smaller;
-  multimap<double, CDir*> verycold;
-  int coldcount = 0;
-  int migcoldcount = 0;
+
+  multimap<double, CDir*> hothash_candidate;
 
   double dir_pop = dir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
-  dout(1) << " MDS_COLD " << __func__ << " find_exports in " << *dir << " pop " << dir_pop << " amount " << amount << " have " << have << " need " << need << " in (" << needmin << " - " << needmax << ")" << dendl;
-  
-  dout(1) << " MDS_COLD " << __func__ << " needmax " << needmax << " needmin " << needmin << " midchunk " << midchunk << " minchunk " << minchunk << dendl;
+  dout(7) << " find_exports in " << dir_pop << " " << *dir << " need " << need << " (" << needmin << " - " << needmax << ")" << dendl;
 
-  double subdir_sum = 0;
-
-  //hash frag to mds
+  #ifdef HOT_HASH
+  //prepare hash function
   int frag_mod_dest = 0;
   unsigned int hash_frag = 0;
   std::hash<inodeno_t> hash_frag_func;
+  #endif
 
+  double subdir_sum = 0;
   for (auto it = dir->begin(); it != dir->end(); ++it) {
     CInode *in = it->second->get_linkage()->get_inode();
     if (!in) continue;
@@ -1026,8 +1031,8 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
     list<CDir*> dfls;
     in->get_dirfrags(dfls);
     for (list<CDir*>::iterator p = dfls.begin();
-   p != dfls.end();
-   ++p) {
+	 p != dfls.end();
+	 ++p) {
       CDir *subdir = *p;
 
       if (!subdir->is_auth()) continue;
@@ -1038,108 +1043,103 @@ void MDBalancer::find_exports_coldfirst(CDir *dir,
       // how popular?
       double pop = subdir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
       subdir_sum += pop;
-      dout(1) << " subdir pop " << pop << " " << *subdir << dendl;
+      dout(15) << "   subdir pop " << pop << " " << *subdir << dendl;
 
-      //frag_mod_dest = int(subdir->get_frag().value())%cluster_size;
-      hash_frag = hash_frag_func(subdir->dirfrag().ino.val);
-      frag_mod_dest = hash_frag%cluster_size;
-      dout(1) << " MDS_COLD " << __func__ << " frag: " << subdir->dirfrag() << " hash_frag: " << hash_frag << " target: " << dest << dendl; 
-      if (pop < minchunk ) {
-        if (dest == frag_mod_dest)
-        {
-          verycold.insert(pair<double,CDir*>(pop, subdir));
-          coldcount++;
-          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a cold " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << frag_mod_dest << " pop: " << pop << dendl;
-        }else{
-          dout(1) << " MDS_COLD " << __func__ << " cold unmatched: find a cold " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << frag_mod_dest << " pop: " << pop << dendl;
-        }
+      //very small
+      if (pop < minchunk) continue;
+
+      // candidate frag
+      if (pop < needmax) {
+        hothash_candidate.insert(pair<double,CDir*>(pop, subdir));
       }
-      else if (pop > needmin) {
-        if (subdir->is_rep()){
-            dout(1) << " MDS_COLD " << __func__ << " find a big_rep " << *((*it).second) << " pop: " << pop << dendl;
-            bigger_rep.push_back(subdir);
-          }
-        else{dout(1) << " MDS_COLD " << __func__ << " find a big_unrep " << *((*it).second) << " pop: " << pop << dendl;
-          bigger_unrep.push_back(subdir);
-        }
+
+      //very big
+      if (pop > need) {
+	if (subdir->is_rep())
+	  bigger_rep.push_back(subdir);
+	else
+	  bigger_unrep.push_back(subdir);
       }
-      else{
-        if (dest == frag_mod_dest)
-        {
-          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a smaller " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << frag_mod_dest << " pop: " << pop << dendl;
-          smaller.insert(pair<double,CDir*>(pop, subdir));
-        }else{
-          dout(1) << " MDS_COLD " << __func__ << " cold matched: find a smaller " << *((*it).second) << " mod cluster_size:" << cluster_size << " == " << frag_mod_dest << " pop: " << pop << dendl;
-        }
-    }
 
     }
   }
   dout(15) << "   sum " << subdir_sum << " / " << dir_pop << dendl;
 
-  multimap<double,CDir*>::iterator it;
-  if(verycold.size()>0){
-  dout(1) << " MDS_COLD " << __func__ << " cold first start " << dendl;
-    for (it = verycold.begin();
-       it != verycold.end();
+  multimap<double,CDir*>::reverse_iterator it;
+  for (it = hothash_candidate.rbegin();
+       it != hothash_candidate.rend();
        ++it) {
-    exports.push_back((*it).second);
-    already_exporting.insert((*it).second);
-    have += (*it).first;
-    migcoldcount++;
-    /*if(migcoldcount>COLDSTART_MIGCOUNT){
-      dout(1) << " MDS_COLD " << __func__ << " find "<< COLDSTART_MIGCOUNT <<" cold fragments, stop " << dendl;
-      return;}*/
-    }
-//    sleep(100)
-  }else{
-    dout(1) << " MDS_COLD " << __func__ << " unable to start cold balance" <<dendl;
+
+      hash_frag = hash_frag_func((*it).second->dirfrag().ino.val);
+      frag_mod_dest = hash_frag%cluster_size;
+      dout(7) << " HOT_HASH " << __func__ << " frag: " << (*it).second->dirfrag() << " hash_frag: " << hash_frag << " target: " << dest << dendl; 
+
+      if (dest == frag_mod_dest)
+        {
+        dout(1) << " HOT_HASH " << __func__ << " taking hothash_candidate: " << *(*it).second << " target: " << dest << dendl;
+
+        exports.push_back((*it).second);
+        already_exporting.insert((*it).second);
+        have += (*it).first;
+        }
+
+      if (have > needmin)
+        return;
   }
-
-  dout(1) << " MDS_COLD " << __func__ << " export "<< coldcount <<" cold" << " start to find smaller " <<dendl;
-
-
+  
   // grab some sufficiently big small items
-  //multimap<double,CDir*>::iterator it;
-//  for (it = smaller.begin();it != smaller.end() && migcoldcount<=COLDSTART_MIGCOUNT ;++it) 
-  for (it = smaller.begin();it != smaller.end(); ++it) 
-  {
-
-    //if ((*it).first < midchunk)break;  // try later
-
-    dout(7) << "   taking smaller " << *(*it).second << dendl;
-    migcoldcount++;
-    exports.push_back((*it).second);
-    already_exporting.insert((*it).second);
-    have += (*it).first;
-    if (have > needmin || descend_depth <= 0)
-      return;
-
-    for (multimap<double,CDir*>::reverse_iterator it = smaller.rbegin();
+  /*multimap<double,CDir*>::reverse_iterator it;
+  for (it = smaller.rbegin();
        it != smaller.rend();
        ++it) {
-    dout(1) << " MDS_COLD " << __func__ << " descending into a smaller big " << *((*it).second) << dendl;
-    find_exports_coldfirst((*it).second, amount, exports, have, already_exporting, dest, descend_depth-1);
-    if (have > needmin){
-      dout(1) << " MDS_COLD " << __func__ << " good" <<dendl;
+
+
+
+    if ((*it).first < midchunk)
+      break;  // try later
+
+    dout(7) << "   taking smaller " << *(*it).second << dendl;
+
+    exports.push_back((*it).second);
+    already_exporting.insert((*it).second);
+    have += (*it).first;
+    if (have > needmin)
       return;
-    }
-  }
+  }*/
+
+  // apprently not enough; drill deeper into the hierarchy (if non-replicated)
+  for (list<CDir*>::iterator it = bigger_unrep.begin();
+       it != bigger_unrep.end();
+       ++it) {
+  
+    dout(15) << "   descending into " << **it << dendl;
+    find_exports_hothash(*it, amount, exports, have, already_exporting, dest);
+    if (have > needmin)
+      return;
   }
 
-  dout(1) << " MDS_COLD " << __func__ << " big rep size: " << bigger_rep.size() << dendl;
+  // ok fine, use smaller bits
+  /*for (;
+       it != smaller.rend();
+       ++it) {
+    dout(7) << "   taking (much) smaller " << it->first << " " << *(*it).second << dendl;
+    exports.push_back((*it).second);
+    already_exporting.insert((*it).second);
+    have += (*it).first;
+    if (have > needmin)
+      return;
+  }*/
+
+  // ok fine, drill into replicated dirs
   for (list<CDir*>::iterator it = bigger_rep.begin();
        it != bigger_rep.end();
        ++it) {
-    dout(1) << " MDS_COLD " << __func__ << "   descending into big" << **it << dendl;
-    find_exports_coldfirst(*it, amount, exports, have, already_exporting, dest, descend_depth-1);
-    if (have > needmin){
-      dout(1) << " MDS_COLD " << __func__ << " good" <<dendl;
-      return;
-    }
-  }
 
-  dout(1) << " MDS_COLD " << __func__ << " export " << migcoldcount << " small and cold, stop " <<dendl;
+    dout(7) << "   descending into replicated " << **it << dendl;
+    find_exports_hothash(*it, amount, exports, have, already_exporting, dest);
+    if (have > needmin)
+      return;
+  }
 
 }
 #endif
@@ -1164,13 +1164,6 @@ void MDBalancer::find_exports(CDir *dir,
 
   double dir_pop = dir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
   dout(7) << " find_exports in " << dir_pop << " " << *dir << " need " << need << " (" << needmin << " - " << needmax << ")" << dendl;
-
-  #ifdef HOT_HASH
-  //prepare hash function
-  int frag_mod_dest = 0;
-  unsigned int hash_frag = 0;
-  std::hash<inodeno_t> hash_frag_func;
-  #endif
 
   double subdir_sum = 0;
   for (auto it = dir->begin(); it != dir->end(); ++it) {
