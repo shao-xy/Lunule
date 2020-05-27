@@ -93,11 +93,8 @@ private:
   int localize_balancer();
   void send_heartbeat();
   void handle_heartbeat(MHeartbeat *m);
-  void find_exports_dominator(CDir *dir,
-                              double amount,
-                              list<CDir*>& exports,
-                              double& have, mds_rank_t dest,
-                              set<CDir*>& already_exporting);
+  #ifdef MDS_COLDFIRST_BALANCER
+  //------old code of cold start-------
   void find_exports_coldfirst(CDir *dir,
                     double amount,
                     list<CDir*>& exports,
@@ -105,6 +102,7 @@ private:
                     set<CDir*>& already_exporting,
                     mds_rank_t dest,
                     int descend_depth);
+  #endif
   void find_exports(CDir *dir,
                     double amount,
                     list<CDir*>& exports,
