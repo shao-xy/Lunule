@@ -12,3 +12,12 @@ add_executable(sxy_test_ipc_recv
 	ipc_recv.cc
 )
 target_link_libraries(sxy_test_ipc_recv ipc global common)
+
+add_executable(sxy_test_mantle test_mantle.cc)
+target_link_libraries(sxy_test_mantle common global mds)
+
+add_executable(sxy_test_mantle_manual test_mantle_manual.cc $<TARGET_OBJECTS:heap_profiler_objs>)
+target_link_libraries(sxy_test_mantle_manual common global mds)
+
+add_executable(sxy_test_lua test_lua.cc)
+target_link_libraries(sxy_test_lua liblua)
