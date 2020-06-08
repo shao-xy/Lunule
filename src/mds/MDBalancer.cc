@@ -40,11 +40,12 @@ using std::vector;
 #include "common/config.h"
 #include "common/errno.h"
 
+#include "mds/hc_balancer/HCBal_Util.h"
+
 #include <unistd.h>
 
 //Flag of our code
 #define BASECODE_CLEAN_STATE
-#define HOT_HASH
 
 #define dout_context g_ceph_context
 #define dout_subsys ceph_subsys_mds
@@ -944,28 +945,24 @@ void MDBalancer::try_rebalance(balance_state_t& state)
 
       //------old code of cold start-------
 
-      #ifndef HOT_HASH
+      #ifdef HOT_HASH
+      find_exports_hothash(*pot, amount, exports, have, already_exporting, target);
+      #elif defined(BAL_CLIENTID)
+      find_exports_clientid(*pot, amount, exports, have, already_exporting, target);
+      #else
       find_exports(*pot, amount, exports, have, already_exporting);
       #endif
 
-      #ifdef HOT_HASH
-      find_exports_hothash(*pot, amount, exports, have, already_exporting, target);
-      //find_exports(*pot, amount, exports, have, already_exporting);
-      #endif
-
-      #ifdef HOT_HASH
       if (have > amount-MIN_OFFLOAD){
+	#ifdef HOT_HASH
         dout(1) << " MDS_COLD " << __func__ << " 2: start to HOT_HASH migration " <<dendl;
-        break;
-      }
-      #endif
-
-      #ifndef HOT_HASH
-      if (have > amount-MIN_OFFLOAD){
+	#elif defined(BAL_CLIENTID)
+        dout(1) << " MDS_COLD " << __func__ << " 2: start to BAL_CLIENTID migration " <<dendl;
+	#else
         dout(1) << " MDS_COLD " << __func__ << " 2: start to ORIGINAL migration " <<dendl;
+	#endif
         break;
       }
-      #endif
     }
     //fudge = amount - have;
 
@@ -985,7 +982,6 @@ void MDBalancer::try_rebalance(balance_state_t& state)
   mds->mdcache->show_subtrees();
 }
 
-#ifdef HOT_HASH
 void MDBalancer::find_exports_hothash(CDir *dir,
                               double amount,
                               list<CDir*>& exports,
@@ -1013,14 +1009,12 @@ void MDBalancer::find_exports_hothash(CDir *dir,
   multimap<double, CDir*> hothash_candidate;
 
   double dir_pop = dir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
-  dout(7) << " find_exports in " << dir_pop << " " << *dir << " need " << need << " (" << needmin << " - " << needmax << ")" << dendl;
+  dout(7) << " find_exports_hothash in " << dir_pop << " " << *dir << " need " << need << " (" << needmin << " - " << needmax << ")" << dendl;
 
-  #ifdef HOT_HASH
   //prepare hash function
   int frag_mod_dest = 0;
   unsigned int hash_frag = 0;
   std::hash<inodeno_t> hash_frag_func;
-  #endif
 
   double subdir_sum = 0;
   for (auto it = dir->begin(); it != dir->end(); ++it) {
@@ -1142,7 +1136,92 @@ void MDBalancer::find_exports_hothash(CDir *dir,
   }
 
 }
-#endif
+
+void MDBalancer::find_exports_clientid(CDir *dir,
+                              double amount,
+                              list<CDir*>& exports,
+                              double& have,
+                              set<CDir*>& already_exporting,
+			      mds_rank_t dest)
+{
+  dout(0) << " [WAN]: old export was happen " << dendl;
+  double need = amount - have;
+  if (need < amount * g_conf->mds_bal_min_start)
+    return;   // good enough!
+
+  CInode * ino = dir->get_inode();
+  //if (ino->is_base() || ino->is_stray()) {
+  //if (ino->is_mdsdir() || ino->is_stray()) {
+  if (ino->is_stray()) {
+    return;
+  }
+
+  // 0. Make path string for unexpected situations
+  std::string dirpath;
+  dir->get_inode()->make_path_string(dirpath, true);
+  
+  // 1. Get the amount of MDSs
+  int cluster_size = mds->get_mds_map()->get_num_in_mds();
+  dout(7) << " CLIENTID 1. cluster size = " << cluster_size << dendl;
+
+  // 2. Whlch is the level 1 directory name in the file system?
+  int level1_dirid = HC_Balancer::level1_dirid(dir);
+  if (level1_dirid < 0) {
+    // this means an invalid CDir pointer, or the pointer is root
+    dout(7) << " CLIENTID 2. dir id = " << level1_dirid << " recursively traversing through its children" << dendl;
+    if (dir) {
+      dout(7) << " CLIENTID 2.1 We are handling: " << dirpath << " dir=" << *dir << dendl;
+      for (auto it = dir->begin(); it != dir->end(); ++it) {
+	CInode *in = it->second->get_linkage()->get_inode();
+	if (!in) continue;
+	if (!in->is_dir()) continue;
+	list<CDir*> dirfrags;
+	in->get_dirfrags(dirfrags);
+	for (list<CDir*>::iterator p = dirfrags.begin();
+	     p != dirfrags.end();
+	     ++p) {
+	  CDir * subdir = *p;
+	  if (!subdir->is_auth()) continue;
+	  if (already_exporting.count(subdir)) continue;
+	  if (subdir->is_frozen()) continue;
+	  dout(15) << "   descending (CLIENTID) into " << *in << dendl;
+	  find_exports_clientid(subdir, amount, exports, have, already_exporting, dest);
+	  // FIXME: We don't care about "have" here.
+	}
+      }
+    }
+    return;
+  }
+  else if (level1_dirid == 0) {
+    // this means an invalid directory name
+    // We should place this on mds.0
+    dout(7) << " CLIENTID 2. dir id = 0 (or invalid number format), exporting this to mds.0" << dendl;
+    if (dest == 0) {
+      exports.push_back(dir);
+      already_exporting.insert(dir);
+      // FIXME: We don't care "have" here.
+    }
+    return;
+  }
+  dout(7) << " CLIENTID 2. dir id = " << level1_dirid << dendl;
+
+  // 3. How many files directories are there in level 1?
+  int level1_filedirnum = HC_Balancer::get_dir_childrennum(mds->mdcache->get_root());
+  dout(7) << " CLIENTID 3. #Files in level1 = " << level1_filedirnum << dendl;
+
+  // 4. Calculate which rank should am I on?
+  int i_truerank = level1_filedirnum == 0 ? 0 : (cluster_size * (level1_dirid - 1) / level1_filedirnum);
+  dout(7) << " CLIENTID 4. I should be on: " << i_truerank << dendl;
+  mds_rank_t truerank(i_truerank);
+
+  if (dest == truerank) {
+    exports.push_back(dir);
+    already_exporting.insert(dir);
+    // FIXME: We don't care "have" here.
+  }
+
+  return;
+}
 
 void MDBalancer::find_exports(CDir *dir,
                               double amount,

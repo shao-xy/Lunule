@@ -26,6 +26,8 @@ using std::map;
 #include "common/Clock.h"
 #include "common/Cond.h"
 
+#include "hc_balancer/HCConsole.h"
+
 class MDSRank;
 class Message;
 class MHeartbeat;
@@ -105,6 +107,13 @@ private:
   #endif
 
   void find_exports_hothash(CDir *dir,
+                    double amount,
+                    list<CDir*>& exports,
+                    double& have,
+                    set<CDir*>& already_exporting,
+                    mds_rank_t dest);
+
+  void find_exports_clientid(CDir *dir,
                     double amount,
                     list<CDir*>& exports,
                     double& have,
