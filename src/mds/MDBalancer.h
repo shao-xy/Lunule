@@ -120,6 +120,13 @@ private:
                     set<CDir*>& already_exporting,
                     mds_rank_t dest);
 
+  void find_exports_foreseen(CDir *dir,
+                    double amount,
+                    list<CDir*>& exports,
+                    double& have,
+                    set<CDir*>& already_exporting,
+                    mds_rank_t dest);
+
   void find_exports(CDir *dir,
                     double amount,
                     list<CDir*>& exports,

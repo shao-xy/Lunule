@@ -949,6 +949,8 @@ void MDBalancer::try_rebalance(balance_state_t& state)
       find_exports_hothash(*pot, amount, exports, have, already_exporting, target);
       #elif defined(BAL_CLIENTID)
       find_exports_clientid(*pot, amount, exports, have, already_exporting, target);
+      #elif defined(BAL_FORESEEN)
+      find_exports_foreseen(*pot, amount, exports, have, already_exporting, target);
       #else
       find_exports(*pot, amount, exports, have, already_exporting);
       #endif
@@ -1221,6 +1223,15 @@ void MDBalancer::find_exports_clientid(CDir *dir,
   }
 
   return;
+}
+
+void MDBalancer::find_exports_clientid(CDir *dir,
+                              double amount,
+                              list<CDir*>& exports,
+                              double& have,
+                              set<CDir*>& already_exporting,
+			      mds_rank_t dest)
+{
 }
 
 void MDBalancer::find_exports(CDir *dir,
