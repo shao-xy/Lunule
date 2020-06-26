@@ -27,6 +27,9 @@ using std::map;
 #include "common/Cond.h"
 
 #include "hc_balancer/HCConsole.h"
+#include "hc_balancer/ForeseenTraceTree.h"
+
+#define TRACE_PATH "/home/ceph/cyx/trace/trace_compilation"
 
 class MDSRank;
 class Message;
@@ -44,7 +47,8 @@ public:
     messenger(msgr),
     mon_client(monc),
     beat_epoch(0),
-    last_epoch_under(0), my_load(0.0), target_load(0.0)
+    last_epoch_under(0), my_load(0.0), target_load(0.0),
+    foreseenTree(this, TRACE_PATH)
     { }
 
   mds_load_t get_load(utime_t);
@@ -179,6 +183,9 @@ private:
 
   // per-epoch state
   double          my_load, target_load;
+
+  friend class ForeseenTraceTree;
+  ForeseenTraceTree foreseenTree;
 };
 
 #endif

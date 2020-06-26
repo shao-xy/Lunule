@@ -63,6 +63,7 @@ add_subdirectory(system)
 if(WITH_FIO)
   add_subdirectory(fio)
 endif()
+add_subdirectory(sxy)
 
 # test_timers
 add_executable(ceph_test_timers

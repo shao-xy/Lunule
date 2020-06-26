@@ -41,6 +41,7 @@ using std::vector;
 #include "common/errno.h"
 
 #include "mds/hc_balancer/HCBal_Util.h"
+#include "mds/hc_balancer/ForeseenTraceTree.h"
 
 #include <unistd.h>
 
@@ -997,7 +998,6 @@ void MDBalancer::find_exports_hothash(CDir *dir,
     return;   // good enough!
   double needmax = need * g_conf->mds_bal_need_max;
   double needmin = need * g_conf->mds_bal_need_min;
-  double midchunk = need * g_conf->mds_bal_midchunk;
   double minchunk = need * g_conf->mds_bal_minchunk;
   
   int cluster_size = mds->get_mds_map()->get_num_in_mds();
@@ -1225,13 +1225,58 @@ void MDBalancer::find_exports_clientid(CDir *dir,
   return;
 }
 
-void MDBalancer::find_exports_clientid(CDir *dir,
+void MDBalancer::find_exports_foreseen(CDir *dir,
                               double amount,
                               list<CDir*>& exports,
                               double& have,
                               set<CDir*>& already_exporting,
 			      mds_rank_t dest)
 {
+  dout(0) << " [WAN]: old export was happen " << dendl;
+
+  dout(1) << __func__ << " start" << dendl;
+
+  // 0. Make path string for unexpected situations
+  std::string dirpath;
+  dir->get_inode()->make_path_string(dirpath, true);
+
+  dout(1) << __func__ << " dirpath: " << dirpath << dendl;
+
+  mds_rank_t truerank = foreseenTree.lookup(HC_Balancer::polish(dirpath));
+
+  dout(1) << __func__ << " lookup result: " << truerank << dendl;
+
+  switch (truerank) {
+    case -3:
+      find_exports(dir, amount, exports, have, already_exporting);
+      return;
+    case -2: {
+      list<CDir*> recur_dirs;
+      for (auto it = dir->begin(); it != dir->end(); it++) {
+	CDentry * dentry = it->second;
+	CInode * child = dentry->get_linkage()->get_inode();
+	child->get_dirfrags(recur_dirs);
+      }
+      dout(1) << __func__ << " we should recursively find in " << recur_dirs.size() << " subdir(s)." << dendl;
+      for (CDir * childdir : recur_dirs) {
+	dout(1) << __func__ << " visiting subdir from " << dirpath << dendl;
+	find_exports_foreseen(childdir, amount, exports, have, already_exporting, dest);
+	dout(1) << __func__ << " visited subdir from " << dirpath << dendl;
+      }
+      return;
+    }
+    case -1:
+      dest = 0;
+      break;
+    default:
+      break;
+  }
+
+  if (dest == truerank) {
+    dout(1) << __func__ << " The destination is as expected (" << truerank << "), exporting." << dendl;
+    exports.push_back(dir);
+    already_exporting.insert(dir);
+  }
 }
 
 void MDBalancer::find_exports(CDir *dir,

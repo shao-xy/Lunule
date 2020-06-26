@@ -1,0 +1,2 @@
+add_executable(sxy_test_foreseentrace_tree mds/hc_foreseentracetree.cc)
+target_link_libraries(sxy_test_foreseentrace_tree mds pthread common global)
