@@ -1255,7 +1255,7 @@ void MDBalancer::find_exports_foreseen(CDir *dir,
       for (auto it = dir->begin(); it != dir->end(); it++) {
 	CDentry * dentry = it->second;
 	CInode * child = dentry->get_linkage()->get_inode();
-	child->get_dirfrags(recur_dirs);
+	if (child)	child->get_dirfrags(recur_dirs);
       }
       dout(1) << __func__ << " we should recursively find in " << recur_dirs.size() << " subdir(s)." << dendl;
       for (CDir * childdir : recur_dirs) {
@@ -1266,7 +1266,8 @@ void MDBalancer::find_exports_foreseen(CDir *dir,
       return;
     }
     case -1:
-      dest = 0;
+      // don't export
+      dest = -10;
       break;
     default:
       break;

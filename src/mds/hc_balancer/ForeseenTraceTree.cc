@@ -331,6 +331,7 @@ mds_rank_t ForeseenTraceTree::lookup(string fullpath)
 	if (!built)		return mds_rank_t(-3);
 	if (bal->mds->get_mds_map()->get_num_in_mds() != cluster_size) {
 		dout(1) << __func__ << " Tree needs redividing" << dendl;
+		cluster_size = bal->mds->get_mds_map()->get_num_in_mds();
 		building_thrd.create("ForeTreeCreate");
 		return mds_rank_t(-3);
 	}
@@ -345,15 +346,15 @@ mds_rank_t ForeseenTraceTree::lookup(string fullpath)
 	
 	for (auto it = lp_lut.begin(); it != lp_lut.end(); it++) {
 		string key = it->first;
-		dout(1) << __func__ << " key: " << key << dendl;
+		dout(15) << __func__ << " key: " << key << dendl;
 
 		// maybe not deep?
-		if (key.find_first_of(directory_prefix) == 0) {
+		if (key.find(directory_prefix) == 0) {
 			is_shallow = true;
 			break;
 		}
 
-		size_t pos = fullpath.find_first_of(key);
+		size_t pos = fullpath.find(key);
 		if (pos != 0)	continue;
 
 		size_t keylen = key.size();
