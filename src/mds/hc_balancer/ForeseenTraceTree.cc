@@ -108,6 +108,8 @@ void * ForeseenTraceTree::BuildThread::entry()
 {
 	dout(0) << "ForeseenTraceTree::BuildThread start" << dendl;
 
+	tree->built = false;
+
 	if (tree->root.children.size() == 0) {
 		// Build the tree first
 		Reader r(tracepath, new ColumnSelector(8));
