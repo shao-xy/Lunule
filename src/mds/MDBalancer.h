@@ -29,7 +29,7 @@ using std::map;
 #include "hc_balancer/HCConsole.h"
 #include "hc_balancer/ForeseenTraceTree.h"
 
-#define TRACE_PATH "/home/ceph/cyx/trace/trace_compilation"
+#define TRACE_PATH "/var/log/ceph/trace_web_access_log_80p"
 
 class MDSRank;
 class Message;

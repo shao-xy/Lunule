@@ -13,7 +13,7 @@ using std::map;
 
 #include "mds/mdstypes.h"
 
-#define MAX_TREE_DEPTH 5
+#define MAX_TREE_DEPTH 8
 
 class MDBalancer;
 

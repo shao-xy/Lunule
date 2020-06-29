@@ -220,6 +220,7 @@ void ForeseenTraceTree::foreseen_divide_recursive(ForeseenTraceTree::Node * root
 	std::sort(targets.begin(), targets.end(), [](const pair<int, int>& lhs, const pair<int, int>& rhs) {
 		return lhs.second > rhs.second;
 	});
+	dout(0) << __func__ << " prefix " << curprefix << " targets " << targets << "0" << dendl;
 
 	vector<pair<string, Node*> >::iterator pit = pops.begin();
 	vector<pair<int, int> >::iterator tit = targets.begin();
@@ -257,6 +258,7 @@ void ForeseenTraceTree::foreseen_divide_recursive(ForeseenTraceTree::Node * root
 			if (tit != targets.end()) {
 				curmds_rank = tit->first;
 				curmds_capacity = tit->second;
+				dout(0) << __func__ << " prefix " << curprefix << " targets " << targets << "1" << dendl;
 			}
 		}
 		else if (child_pop > curmds_capacity) {
@@ -268,6 +270,7 @@ void ForeseenTraceTree::foreseen_divide_recursive(ForeseenTraceTree::Node * root
 			if (tit != targets.end()) {
 				curmds_rank = tit->first;
 				curmds_capacity = tit->second;
+				dout(0) << __func__ << " prefix " << curprefix << " targets " << targets << "2" << dendl;
 			}
 		}
 		else {
@@ -286,8 +289,13 @@ void ForeseenTraceTree::foreseen_divide_recursive(ForeseenTraceTree::Node * root
 					child_pop = child->get_pop();
 				}
 				// remove that mds from list
-				pops.erase(pops.begin());
+				targets.erase(it);
 				tit = targets.begin();
+				if (tit != targets.end()) {
+					curmds_rank = tit->first;
+					curmds_capacity = tit->second;
+					dout(0) << __func__ << " prefix " << curprefix << " targets " << targets << "3" << dendl;
+				}
 				continue;
 			}
 			// not lucky. We split the larget mds
@@ -300,6 +308,11 @@ void ForeseenTraceTree::foreseen_divide_recursive(ForeseenTraceTree::Node * root
 			targets.insert(it, std::make_pair<int, int>(std::move(curmds_rank), std::move(curmds_capacity)));
 			targets.erase(targets.begin());
 			tit = targets.begin();
+			if (tit != targets.end()) {
+				curmds_rank = tit->first;
+				curmds_capacity = tit->second;
+				dout(0) << __func__ << " prefix " << curprefix << " targets " << targets << "4" << dendl;
+			}
 			
 			// update child info
 			pit++;
