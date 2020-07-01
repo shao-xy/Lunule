@@ -160,10 +160,13 @@ void ForeseenTraceTree::foreseen_divide()
 
 	int cluster_size = bal->mds->get_mds_map()->get_num_in_mds();
 	//int cluster_size = 5;
-	int average = root.get_pop() / cluster_size;
+	//int average = root.get_pop() / cluster_size;
+	int rootpop = root.get_pop();
+	int mds0_load = rootpop / (2 * cluster_size - 1);
 	map<int, int> * pop_alloc = new map<int, int>();
 	for (int i = 0; i < cluster_size; i++) {
-		pop_alloc->insert(std::make_pair<int, int>(std::move(i), std::move(average)));
+		//pop_alloc->insert(std::make_pair<int, int>(std::move(i), std::move(average)));
+		pop_alloc->insert(std::make_pair<int, int>(std::move(i), i ? (2 * mds0_load) : std::move(mds0_load)));
 	}
 	pop_alloc->at(cluster_size - 1) += root.get_pop() % cluster_size;
 	foreseen_divide_recursive(&root, "", pop_alloc);
@@ -171,9 +174,46 @@ void ForeseenTraceTree::foreseen_divide()
 	dout(0) << __func__ << " end" << dendl;
 }
 
+pair<int, map<int, int>*> select_from_pop(int child_pop, vector<pair<int, int> > & targets)
+{
+	map<int, int>* childpop_alloc = new map<int, int>();
+	while (child_pop > 0 && !targets.empty()) {
+		vector<pair<int, int> >::iterator head = targets.begin();
+		int capacity = head->second;
+		if (child_pop >= capacity) {
+			childpop_alloc->insert(std::make_pair<int, int>(std::move(head->first), std::move(capacity)));
+			child_pop -= capacity;
+			targets.erase(head);
+			dout(10) << __func__  << " targets " << targets << " childpop_alloc " << *childpop_alloc << " 1" << dendl;
+		}
+		else if (child_pop < capacity) {
+			vector<pair<int, int> >::iterator it = std::find_if(targets.begin(), targets.end(), [child_pop](const pair<int, int>& element) -> bool { return element.second == child_pop; });
+			if (it != targets.end()) {
+				childpop_alloc->insert(std::make_pair<int, int>(std::move(it->first), std::move(it->second)));
+				dout(10) << __func__  << " targets " << targets << " childpop_alloc " << *childpop_alloc << " 2" << dendl;
+			}
+			else {
+				int rank = head->first;
+				childpop_alloc->insert(std::make_pair<int, int>(std::move(rank), std::move(child_pop)));
+				capacity -= child_pop;
+				targets.insert(std::find_if(head + 1, targets.end(), [capacity] (const pair<int, int>& element) -> bool { return element.second < capacity; }), std::make_pair<int, int>(std::move(rank), std::move(capacity)));
+				targets.erase(targets.begin()); // now head may be stray, use targets.begin() instead
+				dout(10) << __func__  << " targets " << targets << " childpop_alloc " << *childpop_alloc << " 3" << dendl;
+			}
+			child_pop = 0;
+			break;
+		}
+	}
+	if (child_pop && !childpop_alloc->empty()) {
+		childpop_alloc->begin()->second += child_pop;
+		dout(10) << __func__  << " targets " << targets << " childpop_alloc " << *childpop_alloc << " manual increase " << child_pop << " 4" << dendl;
+	}
+	return std::make_pair<int, map<int, int>*>(std::move(child_pop), std::move(childpop_alloc));
+}
+
 void ForeseenTraceTree::foreseen_divide_recursive(ForeseenTraceTree::Node * root, string curprefix, map<int, int> * pop_alloc)
 {
-	dout(0) << __func__ << " prefix " << curprefix << " pop_alloc " << *pop_alloc << dendl;
+	dout(5) << __func__ << " prefix " << curprefix << " pop_alloc " << *pop_alloc << dendl;
 	size_t mdslist_len = pop_alloc->size();
 	if (!root || !pop_alloc || !mdslist_len)	return;
 
@@ -220,122 +260,60 @@ void ForeseenTraceTree::foreseen_divide_recursive(ForeseenTraceTree::Node * root
 	std::sort(targets.begin(), targets.end(), [](const pair<int, int>& lhs, const pair<int, int>& rhs) {
 		return lhs.second > rhs.second;
 	});
-	dout(0) << __func__ << " prefix " << curprefix << " targets " << targets << "0" << dendl;
+	dout(10) << __func__ << " prefix " << curprefix << " targets " << targets << " 0" << dendl;
+
+	// Third we calculate the popularity which belongs to the parent itself
+	int childpopsum = 0;
+	for (auto it = pops.begin(); it != pops.end(); it++) {
+		childpopsum += it->second->get_pop();
+	}
+	int dirpop = root->get_pop() - childpopsum;
+	pair<int, map<int, int>*> ret = select_from_pop(dirpop, targets);
+	dout(10) << __func__ << " prefix " << curprefix << " targets " << targets << " 1" << dendl;
+
+	if (ret.second) {
+		if (!ret.second->empty()) {
+			vector<int> servers;
+			int max_load = 0;
+			for (map<int, int>::iterator it = ret.second->begin();
+				 it != ret.second->end();
+				 it++) {
+				if (it->second > max_load) {
+					servers.clear();
+					servers.push_back(it->first);
+					max_load = it->second;
+				}
+				else if (it->second == max_load) {
+					servers.push_back(it->first);
+				}
+			}
+			lp_lut.insert(std::make_pair<string, TargetServer>(string(curprefix), TargetServer(servers)));
+		}
+		delete ret.second;
+	}
 
 	vector<pair<string, Node*> >::iterator pit = pops.begin();
-	vector<pair<int, int> >::iterator tit = targets.begin();
 	assert(pit != pops.end()); // since size > 0
 
-	// child info
-	string child_name = pit->first;
-	Node * child = pit->second;
-	int child_pop = child->get_pop();
-
-	// current mds info
-	int curmds_rank = tit->first;
-	int curmds_capacity = tit->second;
-
-	map<int, int> * childpop_alloc = new map<int, int>();
-
-	while (pit != pops.end() && tit != targets.end()) {
-		if (child_pop == curmds_capacity) {
-			// too lucky
-			childpop_alloc->insert(std::make_pair<int, int>(std::move(curmds_rank), std::move(curmds_capacity)));
-			foreseen_divide_recursive(child, curprefix + "/" + child_name, childpop_alloc);
-			childpop_alloc = new map<int, int>();
-			pit++;
-			targets.erase(tit);
-			tit = targets.begin();
-
-			// update child info
-			if (pit != pops.end()) {
-				child_name = pit->first;
-				child = pit->second;
-				child_pop = child->get_pop();
-			}
-
-			// update current mds info
-			if (tit != targets.end()) {
-				curmds_rank = tit->first;
-				curmds_capacity = tit->second;
-				dout(0) << __func__ << " prefix " << curprefix << " targets " << targets << "1" << dendl;
-			}
+	while (pit != pops.end() && !targets.empty()) {
+		// child info
+		string child_name = pit->first;
+		Node * child = pit->second;
+		int child_pop = child->get_pop();
+		
+		pair<int, map<int, int>*> ret = select_from_pop(child_pop, targets);
+		dout(10) << __func__ << " prefix " << curprefix << " targets " << targets << " 2" << dendl;
+		foreseen_divide_recursive(child, curprefix + "/" + child_name, ret.second);
+		if (unlikely(ret.first)) {
+			break;
 		}
-		else if (child_pop > curmds_capacity) {
-			childpop_alloc->insert(std::make_pair<int, int>(std::move(curmds_rank), std::move(curmds_capacity)));
-			child_pop -= curmds_capacity;
-			targets.erase(tit);
-			tit = targets.begin();
-			// update current mds info only
-			if (tit != targets.end()) {
-				curmds_rank = tit->first;
-				curmds_capacity = tit->second;
-				dout(0) << __func__ << " prefix " << curprefix << " targets " << targets << "2" << dendl;
-			}
-		}
-		else {
-			// Do we have an exactly same capacity?
-			vector<pair<int, int> >::iterator it = std::find_if(tit, targets.end(), [child_pop](const pair<int, int>& element) -> bool { return element.second == child_pop; });
-			if (it != targets.end()) {
-				// lucky?
-				childpop_alloc->insert(make_pair<int, int>(std::move(it->first), std::move(it->second)));
-				foreseen_divide_recursive(child, curprefix + "/" + child_name, childpop_alloc);
-				childpop_alloc = new map<int, int>();
-				pit++;
-				// update child info
-				if (pit != pops.end()) {
-					child_name = pit->first;
-					child = pit->second;
-					child_pop = child->get_pop();
-				}
-				// remove that mds from list
-				targets.erase(it);
-				tit = targets.begin();
-				if (tit != targets.end()) {
-					curmds_rank = tit->first;
-					curmds_capacity = tit->second;
-					dout(0) << __func__ << " prefix " << curprefix << " targets " << targets << "3" << dendl;
-				}
-				continue;
-			}
-			// not lucky. We split the larget mds
-			childpop_alloc->insert(std::make_pair<int, int>(std::move(curmds_rank), std::move(child_pop)));
-			foreseen_divide_recursive(child, curprefix + "/" + child_name, childpop_alloc);
-			childpop_alloc = new map<int, int>();
-			// update current capacity
-			curmds_capacity -= child_pop;
-			it = std::find_if(tit + 1, targets.end(), [curmds_capacity](const pair<int, int>& element) { return element.second < curmds_capacity; });
-			targets.insert(it, std::make_pair<int, int>(std::move(curmds_rank), std::move(curmds_capacity)));
-			targets.erase(targets.begin());
-			tit = targets.begin();
-			if (tit != targets.end()) {
-				curmds_rank = tit->first;
-				curmds_capacity = tit->second;
-				dout(0) << __func__ << " prefix " << curprefix << " targets " << targets << "4" << dendl;
-			}
-			
-			// update child info
-			pit++;
-			if (pit != pops.end()) {
-				child_name = pit->first;
-				child = pit->second;
-				child_pop = child->get_pop();
-			}
-		}
+		pit++;
 	}
 
 	// unallocated: push to mds.0
 	for (; pit != pops.end(); pit++) {
-		if (childpop_alloc) {
-			foreseen_divide_recursive(child, curprefix + "/" + child_name, childpop_alloc);
-			childpop_alloc = NULL;
-		}
-		else {
-			lp_lut.insert(std::make_pair<string, TargetServer>(curprefix + "/" + pit->first, TargetServer(0)));
-		}
+		lp_lut.insert(std::make_pair<string, TargetServer>(curprefix + "/" + pit->first, TargetServer(0)));
 	}
-	
-	if (childpop_alloc) delete childpop_alloc;
 
 	// Release memory before we exit.
 	delete pop_alloc;
