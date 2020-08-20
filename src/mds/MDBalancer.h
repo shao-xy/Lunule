@@ -25,10 +25,12 @@ using std::map;
 #include "include/types.h"
 #include "common/Clock.h"
 #include "common/Cond.h"
+#include "mds/mdstypes.h"
 
 class MDSRank;
 class Message;
 class MHeartbeat;
+class MIFBeat;
 class CInode;
 class CDir;
 class Messenger;
@@ -36,6 +38,7 @@ class MonClient;
 
 class MDBalancer {
   friend class C_Bal_SendHeartbeat;
+  friend class C_Bal_SendIFbeat;
 public:
   MDBalancer(MDSRank *m, Messenger *msgr, MonClient *monc) : 
     mds(m),
@@ -82,6 +85,14 @@ private:
     std::map<mds_rank_t, double> exported;
   } balance_state_t;
 
+
+  typedef struct{
+    double my_if;
+    double my_urgency;
+    mds_rank_t whoami;
+    bool is_bigger;
+  }imbalance_summary_t;
+
   //set up the rebalancing targets for export and do one if the
   //MDSMap is up to date
   void prep_rebalance(int beat);
@@ -92,7 +103,10 @@ private:
   void export_empties();
   int localize_balancer();
   void send_heartbeat();
+  void send_ifbeat(mds_rank_t target, double if_beate_value, vector<migration_decision_t>& migration_decision);
   void handle_heartbeat(MHeartbeat *m);
+  void handle_ifbeat(MIFBeat *m);
+  void simple_determine_rebalance(vector<migration_decision_t>& migration_decision);
   void find_exports(CDir *dir,
                     double amount,
                     list<CDir*>& exports,
