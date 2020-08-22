@@ -24,6 +24,7 @@
 #include "MDCache.h"
 #include "Migrator.h"
 #include "Mantle.h"
+#include "Server.h"
 
 #include "include/Context.h"
 #include "msg/Messenger.h"
@@ -477,8 +478,8 @@ void MDBalancer::handle_ifbeat(MIFBeat *m){
       unsigned cluster_size = mds->get_mds_map()->get_num_in_mds();
       
       //vector < map<string, double> > metrics (cluster_size);
-      
       vector <double> IOPSvector(cluster_size);
+      vector <double> load_vector(cluster_size);
       for (mds_rank_t i=mds_rank_t(0);
        i < mds_rank_t(cluster_size);
        i++) {
@@ -487,7 +488,16 @@ void MDBalancer::handle_ifbeat(MIFBeat *m){
           derr << " cant find target load of MDS." << i << dendl_impl;
           assert(0 == " cant find target load of MDS.");
         }
-        IOPSvector[i] = it->second.auth.meta_load();
+
+        if(old_req.find(i)!=old_req.end()){
+          IOPSvector[i] = (it->second.req_rate - old_req[i])/g_conf->mds_bal_interval;
+        }else{
+          //MDS just started, so skip this time
+          IOPSvector[i] = 0;
+        }
+        old_req[i] = it->second.req_rate;
+        
+        load_vector[i] = it->second.auth.meta_load();
         /* mds_load_t &load(it->second);
         no need to get all info?
         metrics[i] = {{"auth.meta_load", load.auth.meta_load()},
@@ -499,7 +509,7 @@ void MDBalancer::handle_ifbeat(MIFBeat *m){
         }
 
       //ok I know all IOPS, know get to calculateIF
-      dout(IF_DEBUG_LEVEL) << " MDS_IFBEAT " << __func__ << " (2) get IOPS " << IOPSvector << dendl;
+      dout(IF_DEBUG_LEVEL) << " MDS_IFBEAT " << __func__ << " (2) get IOPS: " << IOPSvector << " load: "<< load_vector << dendl;
       
       double avg_IOPS = std::accumulate(std::begin(IOPSvector), std::end(IOPSvector), 0.0)/IOPSvector.size(); 
       double max_IOPS = *max_element(IOPSvector.begin(), IOPSvector.end());
@@ -514,7 +524,7 @@ void MDBalancer::handle_ifbeat(MIFBeat *m){
         sum_quadratic  += (my_IOPS-avg_IOPS)*(my_IOPS-avg_IOPS);  
 
         (*my_if_it).my_if = sqrt((my_IOPS-avg_IOPS)*(my_IOPS-avg_IOPS)/(cluster_size-1)) /(sqrt(cluster_size)*avg_IOPS);
-        (*my_if_it).my_urgency = 1/(1+pow(exp(1), 10-20*(my_IOPS/g_conf->mds_bal_presetmax)));
+        (*my_if_it).my_urgency = 1/(1+pow(exp(1), 5-10*(my_IOPS/g_conf->mds_bal_presetmax)));
         (*my_if_it).whoami = temp_pos;
         if(my_IOPS>avg_IOPS){
           (*my_if_it).is_bigger = true;
@@ -528,7 +538,7 @@ void MDBalancer::handle_ifbeat(MIFBeat *m){
       double stdev_IOPS = sqrt(sum_quadratic/(IOPSvector.size()-1));
       double imbalance_degree = 0.0;
       
-      double urgency = 1/(1+pow(exp(1), 10-20*(max_IOPS/g_conf->mds_bal_presetmax)));
+      double urgency = 1/(1+pow(exp(1), 5-10*(max_IOPS/g_conf->mds_bal_presetmax)));
 
       if(sqrt(IOPSvector.size())*avg_IOPS == 0){
         imbalance_degree = 0.0;
@@ -544,7 +554,7 @@ void MDBalancer::handle_ifbeat(MIFBeat *m){
       double simple_migration_amount = 0.1;
 
       if(imbalance_factor>=0.1){
-        dout(IF_DEBUG_LEVEL) << " MDS_IFBEAT " << __func__ << " (2.1) imbalance_factor is high enough: " << imbalance_factor << " start to send " << dendl;
+        dout(IF_DEBUG_LEVEL) << " MDS_IFBEAT " << __func__ << " (2.1) imbalance_factor is high enough: " << imbalance_factor << " imbalance_degree: " << imbalance_degree << " urgency: " << urgency << " start to send " << dendl;
         
         set<mds_rank_t> up;
         mds->get_mds_map()->get_up_mds_set(up);
@@ -556,7 +566,7 @@ void MDBalancer::handle_ifbeat(MIFBeat *m){
           if(my_imbalance_vector[*p].my_if>my_if_threshold && my_imbalance_vector[*p].is_bigger){
             for (vector<imbalance_summary_t>::iterator my_im_it = my_imbalance_vector.begin();my_im_it!=my_imbalance_vector.end();my_im_it++){
             if((*my_im_it).whoami != *p &&(*my_im_it).is_bigger == false && (*my_im_it).my_if >=my_if_threshold){
-              migration_decision_t temp_decision = {(*my_im_it).whoami,simple_migration_amount*IOPSvector[*p]};
+              migration_decision_t temp_decision = {(*my_im_it).whoami,simple_migration_amount*load_vector[*p]};
               mds_decision.push_back(temp_decision);
               dout(IF_DEBUG_LEVEL) << " MDS_IFBEAT " << __func__ << " (2.2.1) decision: " << temp_decision.target_import_mds << " " << temp_decision.traget_export_load << dendl;
             }
@@ -569,7 +579,7 @@ void MDBalancer::handle_ifbeat(MIFBeat *m){
           vector<migration_decision_t> my_decision;
           for (vector<imbalance_summary_t>::iterator my_im_it = my_imbalance_vector.begin();my_im_it!=my_imbalance_vector.end();my_im_it++){
             if((*my_im_it).whoami != whoami &&(*my_im_it).is_bigger == false && (*my_im_it).my_if >=0.05){
-              migration_decision_t temp_decision = {(*my_im_it).whoami,simple_migration_amount*IOPSvector[0]};
+              migration_decision_t temp_decision = {(*my_im_it).whoami,simple_migration_amount*load_vector[0]};
               my_decision.push_back(temp_decision);
               dout(IF_DEBUG_LEVEL) << " MDS_IFBEAT " << __func__ << " (2.2.2) decision of mds0: " << temp_decision.target_import_mds << " " << temp_decision.traget_export_load << dendl;
             }
