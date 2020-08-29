@@ -65,7 +65,7 @@ using std::vector;
 
 /* This function DOES put the passed message before returning */
 
-#define IF_DEBUG_LEVEL 7
+#define IF_DEBUG_LEVEL 0
 
 int MDBalancer::proc_message(Message *m)
 {
