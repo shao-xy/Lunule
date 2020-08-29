@@ -1481,6 +1481,15 @@ public:
       i.reset(now);
     }
   }
+  string show_meta_vel(){
+    string show_vel_string = "IRD: " + to_string(vec[META_POP_IRD].get_last_vel()) + 
+    "IWR: " + to_string(vec[META_POP_IWR].get_last_vel()) + 
+    "READDIR: " + to_string(vec[META_POP_READDIR].get_last_vel()) + 
+    "FETCH: " + to_string(vec[META_POP_FETCH].get_last_vel()) + 
+    "STORE: " + to_string(vec[META_POP_STORE].get_last_vel());
+    return show_vel_string;
+    
+  }
   double meta_load(utime_t now, const DecayRate& rate) {
     return 
       1*vec[META_POP_IRD].get(now, rate) + 

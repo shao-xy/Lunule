@@ -65,7 +65,7 @@ using std::vector;
 
 /* This function DOES put the passed message before returning */
 
-#define IF_DEBUG_LEVEL 0
+#define IF_DEBUG_LEVEL 7
 
 int MDBalancer::proc_message(Message *m)
 {
@@ -1170,7 +1170,7 @@ void MDBalancer::simple_determine_rebalance(vector<migration_decision_t>& migrat
     list<CDir*> exports;
     double have = 0.0;
     for (set<CDir*>::iterator pot = candidates.begin(); pot != candidates.end(); ++pot) {
-      if ((*pot)->get_inode()->is_stray()) continue;
+      if ((*pot)->is_freezing() || (*pot)->is_frozen() || (*pot)->get_inode()->is_stray()) continue;
       find_exports(*pot, ex_load, exports, have, already_exporting);
       if(have>= 0.8*ex_load )break;
       //if (have > amount-MIN_OFFLOAD)break;
@@ -1402,7 +1402,8 @@ void MDBalancer::find_exports(CDir *dir,
   multimap<double, CDir*> smaller;
 
   double dir_pop = dir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
-  dout(IF_DEBUG_LEVEL) << " MDS_IFBEAT " << __func__ << " find_exports in " << dir_pop << " " << *dir << " need " << need << " (" << needmin << " - " << needmax << ")" << dendl;
+  dout(IF_DEBUG_LEVEL) << " MDS_IFBEAT " << __func__ << " find in " << *dir << " pop: " << dir_pop << " Vel: " << dir->pop_auth_subtree.show_meta_vel() << " need " << need << " (" << needmin << " - " << needmax << ")" << dendl;
+  //dout(IF_DEBUG_LEVEL) << " MDS_IFBEAT " << __func__ << " Vel: " << dir->pop_auth_subtree.show_meta_vel()<<dendl;
   dout(7) << " find_exports in " << dir_pop << " " << *dir << " need " << need << " (" << needmin << " - " << needmax << ")" << dendl;
   #ifdef MDS_MONITOR
   dout(7) << " MDS_MONITOR " << __func__ << " needmax " << needmax << " needmin " << needmin << " midchunk " << midchunk << " minchunk " << minchunk << dendl;
@@ -1423,6 +1424,7 @@ void MDBalancer::find_exports(CDir *dir,
 	 ++p) {
       CDir *subdir = *p;
 
+
       if (!subdir->is_auth()) continue;
       if (already_exporting.count(subdir)) continue;
 
@@ -1431,6 +1433,9 @@ void MDBalancer::find_exports(CDir *dir,
       // how popular?
       double pop = subdir->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate);
       subdir_sum += pop;
+
+      dout(IF_DEBUG_LEVEL) << " MDS_IFBEAT " << __func__ << " find in subdir " << *subdir << " pop: " << pop << " Vel: " << subdir->pop_auth_subtree.show_meta_vel() << dendl;
+
       dout(15) << "   subdir pop " << pop << " " << *subdir << dendl;
       #ifdef MDS_MONITOR
       dout(7) << " MDS_MONITOR " << __func__ << "(2) Searching DIR " << *subdir << " pop " << pop << dendl;
