@@ -23,6 +23,10 @@
 // New module to monitor MDS IOPS - from Youxu
 #define MDS_MONITOR
 // #define MDS_MONITOR_LAT
+//
+#ifdef MDS_MONITOR
+#include "MDSMonitor.h"
+#endif
 
 class OSDMap;
 class PerfCounters;
@@ -351,6 +355,7 @@ public:
 			       CDentry *destdn, CDentry *staydn, bool finish_mdr);
 
   #ifdef MDS_MONITOR
+  MDSMonitor mon;
   // monitor
   // int mon_req[mon_mdss_req_num]; // record the number of mdrequest for each operation at running time
   int mon_op[mon_mdss_req_num];  // record the number of mdrequest the MDS handles every second

@@ -1,7 +1,11 @@
 #ifndef CEPH_MDS_MONITOR_H
 #define CEPH_MDS_MONITOR_H
 
+#include <sstream>
+using std::stringstream;
 #include <boost/utility/string_view.hpp>
+
+#include "adsl/PathUtil.h"
 
 #include "MDSRank.h"
 #include "Mutation.h"
@@ -104,7 +108,13 @@ void *Server::monitor_run(void *args){
 			server->mon_op[i] = 0;
 		}
 
-		dout(0) << __func__ << " IOPS " << iops << " IOPS-CLIENT-REQ " << server->iops_client_request << " IOPS-SLAVE-REQ " << server->iops_slave_request << " Cache-Inodes " << server->mdcache->lru.lru_get_size() << " Cache-Inodes-Pinned " << server->mdcache->lru.lru_get_num_pinned() << dendl;
+		stringstream ss;
+		map<string, int> reqs = adsl::req2workload(server->mon.get_req()); 
+		for (auto it = reqs.begin(); it != reqs.end(); it++) {
+			ss << ' ' << it->first << ' ' << it->second;
+		}
+
+		dout(0) << __func__ << " IOPS " << iops << " IOPS-CLIENT-REQ " << server->iops_client_request << " IOPS-SLAVE-REQ " << server->iops_slave_request << " Cache-Inodes " << server->mdcache->lru.lru_get_size() << " Cache-Inodes-Pinned " << server->mdcache->lru.lru_get_num_pinned() << ss.str() << dendl;
 		
 		i = 0;
 		iops = 0;

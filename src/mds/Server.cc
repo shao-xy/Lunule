@@ -1829,7 +1829,16 @@ void Server::handle_client_request(MClientRequest *req)
   dispatch_client_request(mdr);
 
   #ifdef MDS_MONITOR
+  string s;
+  if (mdr->tracei) {
+    mdr->tracei->make_path_string(s);
+  }
+  else {
+    s = "(other)";
+  }
+  mon.hit_req(s);
   iops_client_request++;
+  dout(0) << __func__ << " MDS_MONITOR_REQCOLL " << s << dendl;
   dout(20) << __func__ << " iops_client_request " << iops_client_request << dendl;
   #endif
 
