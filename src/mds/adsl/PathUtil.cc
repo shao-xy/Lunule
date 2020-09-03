@@ -9,7 +9,7 @@ void adsl::WL_Matcher::insert(const char * key, const char * value)
 
 adsl::WL_Matcher::WL_Matcher()
 {
-	insert("ai", "/ai/");
+	insert("ai", "/ai");
 	insert("tar", "/tar/");
 	insert("ycsb-zipfian", "/usertable");
 	insert("web", "/web");
