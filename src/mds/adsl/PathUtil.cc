@@ -26,7 +26,7 @@ string adsl::WL_Matcher::match(string path)
 	return "other";
 }
 
-map<string, int> adsl::req2workload(map<string, int> reqs)
+map<string, int> adsl::req2workload(map<string, int> & reqs)
 {
 	map<string, int> cnt_map;
 	for (auto it = reqs.begin(); it != reqs.end(); it ++) {
