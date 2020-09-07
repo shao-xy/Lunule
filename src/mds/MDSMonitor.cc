@@ -1,4 +1,5 @@
 #include "MDSMonitor.h"
+#include "adsl/PathUtil.h"
 
 void RequestCollector::collect(string req_path)
 {
@@ -32,6 +33,13 @@ map<string, int> RequestCollector::fetch()
 	return ret;
 }
 
+map<string, int> RequestCollector::fetch_workloads()
+{
+	map<string, int> ret = adsl::req2workload(coll);
+	coll.clear();
+	return ret;
+}
+
 void MDSMonitor::hit_req(string req_path)
 {
 	req_coll.collect(req_path);
@@ -40,4 +48,9 @@ void MDSMonitor::hit_req(string req_path)
 map<string, int> MDSMonitor::get_req()
 {
 	return req_coll.fetch();
+}
+
+map<string, int> MDSMonitor::get_workloads()
+{
+	return req_coll.fetch_workloads();
 }

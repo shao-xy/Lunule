@@ -18,7 +18,7 @@ public:
 };
 extern WL_Matcher g_matcher;
 
-map<string, int> req2workload(map<string, int> reqs);
+map<string, int> req2workload(map<string, int> & reqs);
 }; // namespace adsl
 
 #endif /* mds/adsl/PathUtil.h */

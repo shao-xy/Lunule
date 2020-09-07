@@ -109,8 +109,8 @@ void *Server::monitor_run(void *args){
 		}
 
 		stringstream ss;
-		map<string, int> reqs = adsl::req2workload(server->mon.get_req()); 
-		for (auto it = reqs.begin(); it != reqs.end(); it++) {
+		map<string, int> wls = server->mon.get_workloads(); 
+		for (auto it = wls.begin(); it != wls.end(); it++) {
 			ss << ' ' << it->first << ' ' << it->second;
 		}
 

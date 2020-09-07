@@ -19,6 +19,7 @@ public:
 	int size();
 	map<string, int> get() { return coll; }
 	map<string, int> fetch();
+	map<string, int> fetch_workloads();
 };
 
 class MDSMonitor {
@@ -30,6 +31,7 @@ public:
 	// RequestCollector
 	void hit_req(string req_path);
 	map<string, int> get_req();
+	map<string, int> get_workloads();
 };
 
 #endif
