@@ -26,6 +26,8 @@
 #include "MigratorIPC.h"
 #endif
 
+#include "common/Clock.h"
+
 #include <map>
 #include <list>
 #include <set>
@@ -151,7 +153,16 @@ protected:
 
   map<CDir*, export_state_t>  export_state;
 
-  list<pair<dirfrag_t,mds_rank_t> >  export_queue;
+  //list<pair<dirfrag_t,mds_rank_t> >  export_queue;
+  struct export_item_t {
+    dirfrag_t dirfrag;
+    mds_rank_t target;
+    utime_t ts;
+    export_item_t(dirfrag_t dirfrag, mds_rank_t target, 
+		  utime_t ts = ceph_clock_now()) : dirfrag(dirfrag),
+		  target(target), ts(ts) {}
+  };
+  list<export_item_t> export_queue;
 
   // import fun
   struct import_state_t {

@@ -695,7 +695,8 @@ void Migrator::export_dir_nicely(CDir *dir, mds_rank_t dest)
   // enqueue
   dout(7) << "export_dir_nicely " << *dir << " to " << dest << dendl;
 
-  export_queue.push_back(pair<dirfrag_t,mds_rank_t>(dir->dirfrag(), dest));
+  //export_queue.push_back(pair<dirfrag_t,mds_rank_t>(dir->dirfrag(), dest));
+  export_queue.push_back(export_item_t(dir->dirfrag(), dest));
 
   maybe_do_queued_export();
 }
@@ -708,13 +709,16 @@ void Migrator::maybe_do_queued_export()
   running = true;
   #ifdef MDS_MONITOR_MIGRATOR
   dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << dendl;
-  for(list<pair<dirfrag_t,mds_rank_t> >::iterator it = export_queue.begin(); it != export_queue.end();++it)
-    dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (1) export_queue DIR " << *(mds->mdcache->get_dirfrag(it->first)) << " DEST " << it->second << dendl;
+  //for(list<pair<dirfrag_t,mds_rank_t> >::iterator it = export_queue.begin(); it != export_queue.end();++it)
+  //  dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (1) export_queue DIR " << *(mds->mdcache->get_dirfrag(it->first)) << " DEST " << it->second << dendl;
+  for(list<export_item_t>::iterator it = export_queue.begin(); it != export_queue.end();++it)
+    dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (1) export_queue DIR " << *(mds->mdcache->get_dirfrag(it->dirfrag)) << " DEST " << it->target << " TIMESTAMP " << it->ts << dendl;
   #endif
   while (!export_queue.empty() &&
 	 export_state.size() <= 4) {
-    dirfrag_t df = export_queue.front().first;
-    mds_rank_t dest = export_queue.front().second;
+    dirfrag_t df = export_queue.front().dirfrag;
+    mds_rank_t dest = export_queue.front().target;
+    utime_t ts = export_queue.front().ts;
     export_queue.pop_front();
     
     CDir *dir = mds->mdcache->get_dirfrag(df);
@@ -730,6 +734,12 @@ void Migrator::maybe_do_queued_export()
     dout(6) << " MDS_MONITOR_MIGRATOR " << __func__ << " Export_dir START on DIR " << *dir << " at " << export_record_start[dir] << dendl;
     #endif
 
+    utime_t waited_for = ceph_clock_now() - ts;
+    dout(0) << "REVOKE_MIGRATION_WATCH wait for " << waited_for << " for dir " << *dir << dendl;
+    if (waited_for > 0.001) {
+      // have waited for a long time, do nothing
+      dout(0) << " Waits for too long time: " << waited_for << ", abort migration." << dendl;
+    }
     export_dir(dir, dest);
   }
   running = false;
@@ -2297,7 +2307,8 @@ void Migrator::export_finish(CDir *dir)
   dir->unfreeze_tree();
   cache->try_subtree_merge(dir);
   for (auto bd : it->second.residual_dirs) {
-    export_queue.push_front(pair<dirfrag_t,mds_rank_t>(bd->dirfrag(), it->second.peer));
+    //export_queue.push_front(pair<dirfrag_t,mds_rank_t>(bd->dirfrag(), it->second.peer));
+    export_queue.push_front(export_item_t(bd->dirfrag(), it->second.peer));
     bd->take_waiting(CDir::WAIT_ANY_MASK, finished);
     bd->unfreeze_tree();
     cache->try_subtree_merge(bd);
