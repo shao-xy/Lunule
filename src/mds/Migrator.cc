@@ -693,10 +693,13 @@ void Migrator::audit()
 void Migrator::export_dir_nicely(CDir *dir, mds_rank_t dest)
 {
   // enqueue
-  dout(7) << "export_dir_nicely " << *dir << " to " << dest << dendl;
+  //dout(7) << "export_dir_nicely " << *dir << " to " << dest << dendl;
+  dout(0) << "export_dir_nicely " << *dir << " to " << dest << dendl;
 
   //export_queue.push_back(pair<dirfrag_t,mds_rank_t>(dir->dirfrag(), dest));
   export_queue.push_back(export_item_t(dir->dirfrag(), dest));
+
+  dout(0) << __func__ << " after appending, queue size " << export_queue.size() << " dir " << dir->get_path() << dendl;
 
   maybe_do_queued_export();
 }
@@ -704,8 +707,10 @@ void Migrator::export_dir_nicely(CDir *dir, mds_rank_t dest)
 void Migrator::maybe_do_queued_export()
 {
   static bool running;
-  if (running)
+  if (running) {
+    dout(0) << __func__ << " is running." << dendl;
     return;
+  }
   running = true;
   #ifdef MDS_MONITOR_MIGRATOR
   dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << dendl;
@@ -714,6 +719,14 @@ void Migrator::maybe_do_queued_export()
   for(list<export_item_t>::iterator it = export_queue.begin(); it != export_queue.end();++it)
     dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (1) export_queue DIR " << *(mds->mdcache->get_dirfrag(it->dirfrag)) << " DEST " << it->target << " TIMESTAMP " << it->ts << dendl;
   #endif
+
+  dout(0) << " export_state size = " << export_state.size() << dendl;
+  for (auto it = export_state.begin(); it != export_state.end(); it++) {
+    CDir * dir = it->first;
+    int state = it->second.state;
+    dout(0) << "   export_item: state " << state << " dir " << dir->get_path() << dendl;
+  }
+
   while (!export_queue.empty() &&
 	 export_state.size() <= 4) {
     dirfrag_t df = export_queue.front().dirfrag;
@@ -725,7 +738,7 @@ void Migrator::maybe_do_queued_export()
     if (!dir) continue;
     if (!dir->is_auth()) continue;
 
-    dout(0) << "nicely exporting to mds." << dest << " " << *dir << dendl;
+    dout(0) << "nicely exporting to mds." << dest << " " << dir->get_path() << dendl;
 
     #ifdef MDS_MONITOR_MIGRATOR
     dout(7) << " MDS_MONITOR_MIGRATOR " << __func__ << " (2) nicely exporting to mds." << dest << " " << *dir << dendl;
@@ -741,6 +754,13 @@ void Migrator::maybe_do_queued_export()
       dout(0) << " Waits for too long time: " << waited_for << ", abort migration." << dendl;
     }
     export_dir(dir, dest);
+
+    dout(0) << " export_state size = " << export_state.size() << dendl;
+    for (auto it = export_state.begin(); it != export_state.end(); it++) {
+      CDir * dir = it->first;
+      int state = it->second.state;
+      dout(0) << "   export_item: state " << state << " dir " << dir->get_path() << dendl;
+    }
   }
   running = false;
 }
