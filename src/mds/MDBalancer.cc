@@ -46,7 +46,7 @@ using std::vector;
 
 //#define MDS_MONITOR
 #include <unistd.h>
-#define MDS_COLDFIRST_BALANCER
+//#define MDS_COLDFIRST_BALANCER
 
 #define dout_context g_ceph_context
 #define dout_subsys ceph_subsys_mds
@@ -1198,7 +1198,11 @@ void MDBalancer::simple_determine_rebalance(vector<migration_decision_t>& migrat
     double have = 0.0;
     for (set<CDir*>::iterator pot = candidates.begin(); pot != candidates.end(); ++pot) {
       if ((*pot)->is_freezing() || (*pot)->is_frozen() || (*pot)->get_inode()->is_stray()) continue;
+      #ifdef MDS_COLDFIRST_BALANCER
       find_exports_wrapper(*pot, ex_load, exports, have, already_exporting, target);
+      #else
+      find_exports(*pot, ex_load, exports, have, already_exporting, target);
+      #endif
       if(have>= 0.8*ex_load )break;
       //if (have > amount-MIN_OFFLOAD)break;
     }
@@ -1749,6 +1753,7 @@ void MDBalancer::find_exports(CDir *dir,
 
 }
 
+#ifdef MDS_COLDFIRST_BALANCER
 void MDBalancer::find_exports_wrapper(CDir *dir,
                     double amount,
                     list<CDir*>& exports,
@@ -1813,6 +1818,7 @@ void MDBalancer::find_exports_wrapper(CDir *dir,
       break;
   }
 }
+#endif
 
 
 void MDBalancer::hit_inode(utime_t now, CInode *in, int type, int who)
