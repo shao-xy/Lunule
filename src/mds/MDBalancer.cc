@@ -1390,7 +1390,8 @@ void MDBalancer::try_rebalance(balance_state_t& state)
 
       #ifdef MDS_COLDFIRST_BALANCER
       //find_exports_coldfirst_trigger(*pot, amount, exports, have, target, already_exporting);
-      find_exports_coldfirst(*pot, amount, exports, have, already_exporting, target, 10);
+      //find_exports_coldfirst(*pot, amount, exports, have, already_exporting, target, 10);
+      find_exports_wrapper(*pot, amount, exports, have, already_exporting, target);
       #else
       find_exports(*pot, amount, exports, have, already_exporting);
       #endif
