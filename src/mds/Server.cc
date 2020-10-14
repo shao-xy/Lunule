@@ -1868,6 +1868,9 @@ void Server::dispatch_client_request(MDRequestRef& mdr)
   if (logger) logger->inc(l_mdss_dispatch_client_request);
 
   dout(7) << "dispatch_client_request " << *req << dendl;
+  #ifdef MDS_MONITOR
+  dout(3) << "MDS_MONITOR dispatch_client_request " << *req << dendl;
+  #endif
 
   if (req->may_write()) {
     if (mdcache->is_readonly()) {

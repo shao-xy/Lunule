@@ -158,11 +158,15 @@ protected:
     dirfrag_t dirfrag;
     mds_rank_t target;
     utime_t ts;
-    export_item_t(dirfrag_t dirfrag, mds_rank_t target, 
+    utime_t ets;
+    int epoch;
+    export_item_t() {}
+    export_item_t(dirfrag_t dirfrag, mds_rank_t target, int epoch,
 		  utime_t ts = ceph_clock_now()) : dirfrag(dirfrag),
-		  target(target), ts(ts) {}
+		  target(target), ts(ts), epoch(epoch) {}
   };
   list<export_item_t> export_queue;
+  map<CDir*, export_item_t>   export_tracer;
 
   // import fun
   struct import_state_t {
@@ -323,12 +327,26 @@ public:
   // -- import/export --
   // exporter
   void dispatch_export_dir(MDRequestRef& mdr, int count);
-  void export_dir(CDir *dir, mds_rank_t dest);
+  void export_dir(CDir *dir, mds_rank_t dest, export_item_t * pitem = 0);
   void export_empty_import(CDir *dir);
 
-  void export_dir_nicely(CDir *dir, mds_rank_t dest);
+  void export_dir_nicely(CDir *dir, mds_rank_t dest, int epoch = -1);
   void maybe_do_queued_export();
-  void clear_export_queue() {
+  void clear_export_queue(int * p_size = 0, double *p_canceledpop = 0) {
+    if (p_size) {
+      *p_size = export_queue.size();
+    }
+    if (p_canceledpop) {
+      double total = 0;
+      for (list<export_item_t>::iterator it = export_queue.begin();
+	   it != export_queue.end();
+	   it++)
+      {
+	CDir * dir = cache->get_dirfrag(it->dirfrag);
+	total += dir->pop_auth_subtree.meta_load();
+      }
+      *p_canceledpop = total;
+    }
     export_queue.clear();
   }
   

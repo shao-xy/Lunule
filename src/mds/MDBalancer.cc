@@ -648,7 +648,14 @@ void MDBalancer::prep_rebalance(int beat)
 
     dout(5) << " prep_rebalance: cluster loads are" << dendl;
 
+    #ifdef MDS_MONITOR
+    int canceded_subtree;
+    double canceled_pop;
+    mds->mdcache->migrator->clear_export_queue(&canceded_subtree, &canceled_pop);
+    dout(7) << " MDS_MONITOR " << __func__ << " (0) Canceled " << canceded_subtree << " total load " << canceled_pop << dendl;
+    #else
     mds->mdcache->migrator->clear_export_queue();
+    #endif
 
     // rescale!  turn my mds_load back into meta_load units
     double load_fac = 1.0;
@@ -929,6 +936,7 @@ void MDBalancer::try_rebalance(balance_state_t& state)
   }
 
   #ifdef MDS_MONITOR
+  mds->mdcache->show_subtrees(7);
   dout(7) << " MDS_MONITOR " << __func__ << " (1) start" <<dendl;
   #endif
 
@@ -961,7 +969,7 @@ void MDBalancer::try_rebalance(balance_state_t& state)
       dout(5) << " exporting idle (" << pop << ") import " << *im
 	      << " back to mds." << im->inode->authority().first
 	      << dendl;
-      mds->mdcache->migrator->export_dir_nicely(im, im->inode->authority().first);
+      mds->mdcache->migrator->export_dir_nicely(im, im->inode->authority().first, beat_epoch);
       continue;
     }
 
@@ -1028,7 +1036,7 @@ void MDBalancer::try_rebalance(balance_state_t& state)
 		  << " pop " << pop
 		  << " back to mds." << target << dendl;
    
-	  mds->mdcache->migrator->export_dir_nicely(dir, target);
+	  mds->mdcache->migrator->export_dir_nicely(dir, target, beat_epoch);
 	  have += pop;
     #ifdef MDS_MONITOR
     dout(7) << " MDS_MONITOR " << __func__ << " (3) Have " << have << " reexporting " << *dir << " pop " << pop << " back to mds." << target <<dendl;
@@ -1067,7 +1075,7 @@ void MDBalancer::try_rebalance(balance_state_t& state)
 		  << " back to mds." << imp->inode->authority()
 		  << dendl;
 	  have += pop;
-	  mds->mdcache->migrator->export_dir_nicely(imp, imp->inode->authority().first);
+	  mds->mdcache->migrator->export_dir_nicely(imp, imp->inode->authority().first, beat_epoch);
 	}
 	if (amount-have < MIN_OFFLOAD) break;
       }
@@ -1108,8 +1116,10 @@ void MDBalancer::try_rebalance(balance_state_t& state)
       #ifdef MDS_MONITOR
       dout(7) << " MDS_MONITOR " << __func__ << " (5) exporting " << (*it)->pop_auth_subtree << "  " << (*it)->pop_auth_subtree.meta_load(rebalance_time, mds->mdcache->decayrate)
        << " to mds." << target << " DIR " << **it <<dendl;
-      #endif
+      mds->mdcache->migrator->export_dir_nicely(*it, target, beat_epoch);
+      #else
       mds->mdcache->migrator->export_dir_nicely(*it, target);
+      #endif
     }
   }
 

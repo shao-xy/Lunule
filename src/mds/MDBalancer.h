@@ -123,7 +123,10 @@ private:
   Messenger *messenger;
   MonClient *mon_client;
   int beat_epoch;
+public:
+  int get_epoch() { return beat_epoch; }
 
+private:
   int last_epoch_under;
   string bal_code;
   string bal_version;
