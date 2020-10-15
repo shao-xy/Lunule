@@ -1869,7 +1869,8 @@ void Server::dispatch_client_request(MDRequestRef& mdr)
 
   dout(7) << "dispatch_client_request " << *req << dendl;
   #ifdef MDS_MONITOR
-  dout(3) << "MDS_MONITOR dispatch_client_request " << *req << dendl;
+  //dout(3) << "MDS_MONITOR dispatch_client_request " << *req << dendl;
+  //dout(3) << "MDS_MONITOR dispatch_client_request " << req->get_filepath() << dendl;
   #endif
 
   if (req->may_write()) {

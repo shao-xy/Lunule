@@ -729,7 +729,8 @@ void Migrator::maybe_do_queued_export()
 	 export_state.size() <= 4) {
     dirfrag_t df = export_queue.front().dirfrag;
     mds_rank_t dest = export_queue.front().target;
-    //utime_t ts = export_queue.front().ts;
+    utime_t ts = export_queue.front().ts;
+    int epoch = export_queue.front().epoch;
     export_queue.pop_front();
     
     CDir *dir = mds->mdcache->get_dirfrag(df);
@@ -751,7 +752,9 @@ void Migrator::maybe_do_queued_export()
     //  // have waited for a long time, do nothing
     //  dout(0) << " Waits for too long time: " << waited_for << ", abort migration." << dendl;
     //}
-    export_dir(dir, dest);
+    export_item_t * item = new export_item_t(df, dest, epoch, ts);
+    export_dir(dir, dest, item);
+    delete item;
 
     //dout(0) << " export_state size = " << export_state.size() << dendl;
     //for (auto it = export_state.begin(); it != export_state.end(); it++) {
@@ -927,12 +930,14 @@ void Migrator::export_dir(CDir *dir, mds_rank_t dest, export_item_t * pitem)
   stat.tid = mdr->reqid.tid;
   stat.mut = mdr;
 
-  export_item_t& tracer_item = export_tracer[dir];
-  tracer_item.dirfrag = pitem->dirfrag;
-  tracer_item.target = pitem->target;
-  tracer_item.ts = pitem->ts;
-  tracer_item.ets = ceph_clock_now();
-  tracer_item.epoch = pitem->epoch;
+  if (pitem) {
+    export_item_t& tracer_item = export_tracer[dir];
+    tracer_item.dirfrag = pitem->dirfrag;
+    tracer_item.target = pitem->target;
+    tracer_item.ts = pitem->ts;
+    tracer_item.ets = ceph_clock_now();
+    tracer_item.epoch = pitem->epoch;
+  }
  
   return mds->mdcache->dispatch_request(mdr);
 }
@@ -2357,9 +2362,12 @@ void Migrator::export_finish(CDir *dir)
 
   // SXY
   map<CDir*,export_item_t>::iterator tit = export_tracer.find(dir);
-  export_item_t & item = tit->second;
-  dout(2) << __func__ << " " << dir->get_path() << " queuetime " << item.ts << " export start " << item.ets << " finish " << ceph_clock_now() << " from epoch " << item.epoch << " to " << mds->balancer->get_epoch() << dendl;
-  export_tracer.erase(tit);
+  if (tit != export_tracer.end()) {
+    // not found might happen if the export does not follow our path
+    export_item_t & item = tit->second;
+    dout(2) << " MDS_MONITOR " << __func__ << " " << dir->get_path() << " queuetime " << item.ts << " export start " << item.ets << " finish " << ceph_clock_now() << " from epoch " << item.epoch << " to " << mds->balancer->get_epoch() << dendl;
+    export_tracer.erase(tit);
+  }
 
   cache->show_subtrees();
   audit();
