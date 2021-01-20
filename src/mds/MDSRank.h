@@ -38,6 +38,8 @@
 // benefit of those including this header and using MDSRank::logger
 #include "common/perf_counters.h"
 
+#define MDS_MONITOR
+
 enum {
   l_mds_first = 2000,
   l_mds_request,
@@ -409,6 +411,11 @@ class MDSRank {
     MDSMap *get_mds_map() { return mdsmap; }
 
     int get_req_rate() const { return logger->get(l_mds_request); }
+
+  #ifdef MDS_MONITOR
+    int get_req_forward() const { return logger->get(l_mds_forward); }
+  #endif
+    
   
     int get_mds_slow_req_count() const { return mds_slow_req_count; }
 

@@ -93,6 +93,9 @@ void Server::monitor_init(){
 void *Server::monitor_run(void *args){
 	int i = 0;
 	int iops;
+	int delta_forward = 0;
+	long current_forward = 0;
+	long last_forward = 0;
 	// int tmp[mon_mdss_req_num] = {0};
 	Server *server = reinterpret_cast<Server*>(args);
 	MDSRank *mds = server->mds;
@@ -104,7 +107,10 @@ void *Server::monitor_run(void *args){
 			server->mon_op[i] = 0;
 		}
 
-		dout(0) << __func__ << " IOPS " << iops << " IOPS-CLIENT-REQ " << server->iops_client_request << " IOPS-SLAVE-REQ " << server->iops_slave_request << " Cache-Inodes " << server->mdcache->lru.lru_get_size() << " Cache-Inodes-Pinned " << server->mdcache->lru.lru_get_num_pinned() << dendl;
+		current_forward = mds->get_req_forward();
+		delta_forward = current_forward - last_forward;
+		last_forward = current_forward;
+		dout(0) << __func__ << " IOPS " << iops << " IOPS-CLIENT-REQ " << server->iops_client_request << " IOPS-SLAVE-REQ " << server->iops_slave_request << " Cache-Inodes " << server->mdcache->lru.lru_get_size() << " Cache-Inodes-Pinned " << server->mdcache->lru.lru_get_num_pinned() << " Forward-Requests " << delta_forward << dendl;
 		
 		i = 0;
 		iops = 0;
