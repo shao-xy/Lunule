@@ -40,6 +40,7 @@ using std::vector;
 #include "common/errno.h"
 
 #define MDS_MONITOR
+#define SXY_LOAD_MONITOR
 
 #define dout_context g_ceph_context
 #define dout_subsys ceph_subsys_mds
@@ -223,6 +224,10 @@ mds_load_t MDBalancer::get_load(utime_t now)
     for (list<CDir*>::iterator p = ls.begin();
 	 p != ls.end();
 	 ++p) {
+      #ifdef SXY_LOAD_MONITOR
+      CDir * dir = *p;
+      dout(7) << __func__ << " add subtree " << dir->get_path() << " authpop " << dir->pop_auth_subtree_nested << " totalpop " << dir->pop_nested << dendl;
+      #endif
       load.auth.add(now, mds->mdcache->decayrate, (*p)->pop_auth_subtree_nested);
       load.all.add(now, mds->mdcache->decayrate, (*p)->pop_nested);
     }
@@ -661,6 +666,10 @@ void MDBalancer::prep_rebalance(int beat)
     double load_fac = 1.0;
     map<mds_rank_t, mds_load_t>::iterator m = mds_load.find(whoami);
     if ((m != mds_load.end()) && (m->second.mds_load() > 0)) {
+      #ifdef MDS_MONITOR
+      double last_metald = m->second.auth.meta_load();
+      utime_t last_decay = m->second.auth.get_last_decay();
+      #endif
       double metald = m->second.auth.meta_load(rebalance_time, mds->mdcache->decayrate);
       double mdsld = m->second.mds_load();
       load_fac = metald / mdsld;
@@ -669,7 +678,7 @@ void MDBalancer::prep_rebalance(int beat)
 	      << " / " << mdsld
 	      << dendl;
         #ifdef MDS_MONITOR
-        dout(7) << " MDS_MONITOR " << __func__ << " (1) calculate my load factor meta_load " << metald << " mds_load " << mdsld << " load_factor " << load_fac << dendl;
+        dout(7) << " MDS_MONITOR " << __func__ << " (1) calculate my load factor meta_load " << metald << " mds_load " << mdsld << " load_factor " << load_fac << " last meta load " << last_metald << " last decay time " << last_decay << dendl;
         #endif
     }
 
@@ -1273,6 +1282,11 @@ void MDBalancer::find_exports(CDir *dir,
 void MDBalancer::hit_inode(utime_t now, CInode *in, int type, int who)
 {
   // hit inode
+  #ifdef SXY_LOAD_MONITOR
+  string t_path;
+  in->make_path_string(t_path);
+  dout(7) << " SXY_LOAD_MONITOR path" << t_path << " type " << type
+  #endif
   in->pop.get(type).hit(now, mds->mdcache->decayrate);
 
   if (in->get_parent_dn())

@@ -1511,6 +1511,10 @@ public:
     for (int i=0; i<dirfrag_load_vec_t::NUM; i++)
       vec[i].scale(f);
   }
+  utime_t get_last_decay() {
+    // randomly choose one: timestamp are set at the same time
+    return vec[META_POP_IRD].get_last_decay();
+  }
 };
 
 inline void encode(const dirfrag_load_vec_t &c, bufferlist &bl) { c.encode(bl); }
