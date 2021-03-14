@@ -2,6 +2,8 @@
 #define CEPH_MDS_MONITOR_H
 
 #include <boost/utility/string_view.hpp>
+#include <sstream>
+using std::stringstream;
 
 #include "MDSRank.h"
 #include "Mutation.h"
@@ -102,7 +104,9 @@ void *Server::monitor_run(void *args){
 	while(1){
 		sleep(1);
 
+		stringstream ss;
 		for(; i < mon_mdss_req_num; i++){
+			ss << server->mon_op[i] << ' ';
 			iops += server->mon_op[i];
 			server->mon_op[i] = 0;
 		}
@@ -110,7 +114,9 @@ void *Server::monitor_run(void *args){
 		current_forward = mds->get_req_forward();
 		delta_forward = current_forward - last_forward;
 		last_forward = current_forward;
-		dout(0) << __func__ << " IOPS " << iops << " IOPS-CLIENT-REQ " << server->iops_client_request << " IOPS-SLAVE-REQ " << server->iops_slave_request << " Cache-Inodes " << server->mdcache->lru.lru_get_size() << " Cache-Inodes-Pinned " << server->mdcache->lru.lru_get_num_pinned() << " Forward-Requests " << delta_forward << dendl;
+
+		dout(0) << __func__ << " IOPS " << iops << " IOPS-CLIENT-REQ " << server->iops_client_request << " Forward-Requests " << delta_forward << " DETAIL " << ss.str() << dendl;
+		// dout(0) << __func__ << " IOPS " << iops << " IOPS-CLIENT-REQ " << server->iops_client_request << " IOPS-SLAVE-REQ " << server->iops_slave_request << " Cache-Inodes " << server->mdcache->lru.lru_get_size() << " Cache-Inodes-Pinned " << server->mdcache->lru.lru_get_num_pinned() << " Forward-Requests " << delta_forward << dendl;
 		
 		i = 0;
 		iops = 0;
