@@ -103,7 +103,7 @@
 #include <unistd.h>
 #endif
 
-#define TRACE_COLLECTION
+//#define TRACE_COLLECTION
 
 
 #undef dout_prefix
@@ -1722,6 +1722,12 @@ int Client::make_request(MetaRequest *request,
       caller_cond.Wait(client_lock);
     request->caller_cond = NULL;
 
+    if (request->resend_mds >= 0) {
+      utime_t lat = ceph_clock_now();
+      lat -= request->sent_stamp;
+      ldout(cct, 0) << " SXY-CReq fwd op " << ceph_mds_op_name(request->get_op()) << " lat " << lat << dendl;
+    }
+
     // did we get a reply?
     if (request->reply) 
       break;
@@ -1759,6 +1765,7 @@ int Client::make_request(MetaRequest *request,
   // -- log times --
   utime_t lat = ceph_clock_now();
   lat -= request->sent_stamp;
+  ldout(cct, 0) << " SXY-CReq reply op " << ceph_mds_op_name(request->get_op()) << " lat " << lat << dendl;
   ldout(cct, 20) << "lat " << lat << dendl;
   logger->tinc(l_c_lat, lat);
   logger->tinc(l_c_reply, lat);
