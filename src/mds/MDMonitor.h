@@ -104,7 +104,7 @@ void *Server::monitor_run(void *args){
 			server->mon_op[i] = 0;
 		}
 
-		dout(0) << __func__ << " IOPS " << iops << " IOPS-CLIENT-REQ " << server->iops_client_request << " IOPS-SLAVE-REQ " << server->iops_slave_request << " Cache-Inodes " << server->mdcache->lru.lru_get_size() << " Cache-Inodes-Pinned " << server->mdcache->lru.lru_get_num_pinned() << dendl;
+		//dout(0) << __func__ << " IOPS " << iops << " IOPS-CLIENT-REQ " << server->iops_client_request << " IOPS-SLAVE-REQ " << server->iops_slave_request << " Cache-Inodes " << server->mdcache->lru.lru_get_size() << " Cache-Inodes-Pinned " << server->mdcache->lru.lru_get_num_pinned() << dendl;
 		
 		i = 0;
 		iops = 0;
